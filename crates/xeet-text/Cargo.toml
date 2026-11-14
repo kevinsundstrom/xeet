@@ -1,0 +1,16 @@
+[package]
+name = "xeet-text"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "A Rust port of twitter-text: entity extraction, weighted length, URL display form."
+
+[dependencies]
+# NFC, because the weighted length is defined over NFC-normalized text.
+unicode-normalization = "0.1"
+
+[dev-dependencies]
+# YAML parsing for the conformance suite only; pure Rust, never linked in.
+yaml-rust2 = "0.10"
+serde_json = "1"

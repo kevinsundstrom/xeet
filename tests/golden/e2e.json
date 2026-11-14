@@ -1,0 +1,1921 @@
+{
+  "$comment": "End-to-end agreement against the captured x.com pages (PLAN.md §10 layer 2). Counts, deltas and hashes only: the posts' text and the screenshots are X's and stay in the private store. Produced by tools/ship/golden-capture.mjs --kind e2e.",
+  "upstream": "89824c04747e706b687e3af193963c4d00251b8e",
+  "viewport": 800,
+  "dpr": 2,
+  "totals": {
+    "compared": 159,
+    "pass": 159,
+    "skip": 124
+  },
+  "cases": [
+    {
+      "case": "ESPN.html:2120010545872949671",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 2,
+        "xeet": 2,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.00679
+    },
+    {
+      "case": "ESPN.html:2119997839765893389",
+      "verdict": "pass",
+      "heightDelta": 0.5,
+      "lines": {
+        "chrome": 2,
+        "xeet": 2,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.0129
+    },
+    {
+      "case": "ESPN.html:2119984990310044108",
+      "verdict": "pass",
+      "heightDelta": 0.5,
+      "lines": {
+        "chrome": 2,
+        "xeet": 2,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01526
+    },
+    {
+      "case": "ESPN.html:2119977988749922630",
+      "verdict": "pass",
+      "heightDelta": 0.5,
+      "lines": {
+        "chrome": 1,
+        "xeet": 1,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01398
+    },
+    {
+      "case": "F1.html:2117019889076781379",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 3,
+        "xeet": 3,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.00577
+    },
+    {
+      "case": "F1.html:2119898824810389849",
+      "verdict": "pass",
+      "heightDelta": 0.78,
+      "lines": {
+        "chrome": 2,
+        "xeet": 2,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01464
+    },
+    {
+      "case": "F1.html:2119892281176248702",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 2,
+        "xeet": 2,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.00942
+    },
+    {
+      "case": "F1.html:2119882723321942095",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 3,
+        "xeet": 3,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.00563
+    },
+    {
+      "case": "F1.html:2119875923604287764",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 4,
+        "xeet": 4,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01237
+    },
+    {
+      "case": "Google.html:2115489522603466766",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 5,
+        "xeet": 5,
+        "sameContent": false
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.009
+    },
+    {
+      "case": "Google.html:2119788086490001906",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 5,
+        "xeet": 5,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01612
+    },
+    {
+      "case": "Google.html:2118808678149308701",
+      "verdict": "pass",
+      "heightDelta": 0.5,
+      "lines": {
+        "chrome": 5,
+        "xeet": 5,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01591
+    },
+    {
+      "case": "Google.html:2118720749892514251",
+      "verdict": "pass",
+      "heightDelta": 0.5,
+      "lines": {
+        "chrome": 4,
+        "xeet": 4,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01979
+    },
+    {
+      "case": "Google.html:2118390406316728555",
+      "verdict": "pass",
+      "heightDelta": 0.5,
+      "lines": {
+        "chrome": 6,
+        "xeet": 6,
+        "sameContent": false
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01781
+    },
+    {
+      "case": "IGN.html:2119835412403474942",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 1,
+        "xeet": 1,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.00887
+    },
+    {
+      "case": "IGN.html:2120041519717474430",
+      "verdict": "pass",
+      "heightDelta": 0.5,
+      "lines": {
+        "chrome": 3,
+        "xeet": 3,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01685
+    },
+    {
+      "case": "IGN.html:2120037745716322672",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 4,
+        "xeet": 4,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01012
+    },
+    {
+      "case": "IGN.html:2120033970909782182",
+      "verdict": "pass",
+      "heightDelta": 0.5,
+      "lines": {
+        "chrome": 3,
+        "xeet": 3,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01797
+    },
+    {
+      "case": "IGN.html:2120030196216541353",
+      "verdict": "pass",
+      "heightDelta": 0.5,
+      "lines": {
+        "chrome": 3,
+        "xeet": 3,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01885
+    },
+    {
+      "case": "MrBeast.html:1941802940768850033",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 7,
+        "xeet": 7,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01831
+    },
+    {
+      "case": "MrBeast.html:2117113346549817376",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 2,
+        "xeet": 2,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.02042
+    },
+    {
+      "case": "MrBeast.html:2117003477079761397",
+      "verdict": "pass",
+      "heightDelta": 0.97,
+      "lines": {
+        "chrome": 2,
+        "xeet": 2,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01415
+    },
+    {
+      "case": "MrBeast.html:2116566514753277954",
+      "verdict": "pass",
+      "heightDelta": 0.89,
+      "lines": {
+        "chrome": 7,
+        "xeet": 7,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01032
+    },
+    {
+      "case": "MrBeast.html:2114377502453825671",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 3,
+        "xeet": 3,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.02557
+    },
+    {
+      "case": "NASA.html:2119846862286930036",
+      "verdict": "pass",
+      "heightDelta": 0.41,
+      "lines": {
+        "chrome": 5,
+        "xeet": 5,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.0178
+    },
+    {
+      "case": "NASA.html:2119833829389041896",
+      "verdict": "pass",
+      "heightDelta": 0.5,
+      "lines": {
+        "chrome": 2,
+        "xeet": 2,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01422
+    },
+    {
+      "case": "NASA.html:2119467718373941588",
+      "verdict": "pass",
+      "heightDelta": 0.5,
+      "lines": {
+        "chrome": 5,
+        "xeet": 5,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.0182
+    },
+    {
+      "case": "NASA.html:2119441731846639971",
+      "verdict": "pass",
+      "heightDelta": 0.5,
+      "lines": {
+        "chrome": 5,
+        "xeet": 5,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01299
+    },
+    {
+      "case": "NBA.html:2120019063476785477",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 4,
+        "xeet": 4,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01036
+    },
+    {
+      "case": "NBA.html:2120015019408752696",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 2,
+        "xeet": 2,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.00879
+    },
+    {
+      "case": "NBA.html:2120017885682598063",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 4,
+        "xeet": 4,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.00885
+    },
+    {
+      "case": "NBA.html:2120016790608658895",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 1,
+        "xeet": 1,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.00996
+    },
+    {
+      "case": "NBA.html:2120015774983008464",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 7,
+        "xeet": 7,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.0134
+    },
+    {
+      "case": "Polygon.html:2120026208326795767",
+      "verdict": "pass",
+      "heightDelta": 0.88,
+      "lines": {
+        "chrome": 2,
+        "xeet": 2,
+        "sameContent": false
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01283
+    },
+    {
+      "case": "Polygon.html:2119996007266095390",
+      "verdict": "pass",
+      "heightDelta": 0.88,
+      "lines": {
+        "chrome": 2,
+        "xeet": 2,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01206
+    },
+    {
+      "case": "Polygon.html:2119938117784248490",
+      "verdict": "pass",
+      "heightDelta": 0.88,
+      "lines": {
+        "chrome": 2,
+        "xeet": 2,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01289
+    },
+    {
+      "case": "Polygon.html:2119933082371334471",
+      "verdict": "pass",
+      "heightDelta": 0.88,
+      "lines": {
+        "chrome": 2,
+        "xeet": 2,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01733
+    },
+    {
+      "case": "Polygon.html:2119928135927869611",
+      "verdict": "pass",
+      "heightDelta": 0.88,
+      "lines": {
+        "chrome": 2,
+        "xeet": 2,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01393
+    },
+    {
+      "case": "SportsCenter.html:2120023664858992963",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 3,
+        "xeet": 3,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.00777
+    },
+    {
+      "case": "SportsCenter.html:2120020221347963091",
+      "verdict": "pass",
+      "heightDelta": 0.5,
+      "lines": {
+        "chrome": 4,
+        "xeet": 4,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01713
+    },
+    {
+      "case": "SportsCenter.html:2120010718258807082",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 2,
+        "xeet": 2,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.00977
+    },
+    {
+      "case": "SportsCenter.html:2120007654273654854",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 2,
+        "xeet": 2,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.00835
+    },
+    {
+      "case": "SportsCenter.html:2119999609174892726",
+      "verdict": "pass",
+      "heightDelta": 0.03,
+      "lines": {
+        "chrome": 2,
+        "xeet": 2,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.00825
+    },
+    {
+      "case": "XDevelopers.html:2114879022433800258",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 1,
+        "xeet": 1,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01722
+    },
+    {
+      "case": "XDevelopers.html:2110414269036794108",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 5,
+        "xeet": 5,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.0141
+    },
+    {
+      "case": "XDevelopers.html:2107953725071626260",
+      "verdict": "pass",
+      "heightDelta": 0.63,
+      "lines": {
+        "chrome": 2,
+        "xeet": 2,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01282
+    },
+    {
+      "case": "YouTube.html:2102412606308757511",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 1,
+        "xeet": 1,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01398
+    },
+    {
+      "case": "YouTube.html:2119943166572830968",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 2,
+        "xeet": 2,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.00647
+    },
+    {
+      "case": "YouTube.html:2119837423337079090",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 1,
+        "xeet": 1,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.02105
+    },
+    {
+      "case": "YouTube.html:2118750259203506296",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 2,
+        "xeet": 2,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01622
+    },
+    {
+      "case": "YouTube.html:2118100979119759743",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 1,
+        "xeet": 1,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.0037
+    },
+    {
+      "case": "binance.html:2120034050580632010",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 4,
+        "xeet": 4,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.00718
+    },
+    {
+      "case": "binance.html:2119837844500005175",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 3,
+        "xeet": 3,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.00773
+    },
+    {
+      "case": "binance.html:2119423521516560738",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 7,
+        "xeet": 7,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.00978
+    },
+    {
+      "case": "binance.html:2119655363385659500",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 11,
+        "xeet": 11,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.014
+    },
+    {
+      "case": "coinbase.html:2119752393839800427",
+      "verdict": "pass",
+      "heightDelta": 0.27,
+      "lines": {
+        "chrome": 3,
+        "xeet": 3,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01204
+    },
+    {
+      "case": "coinbase.html:2119884951982383568",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 1,
+        "xeet": 1,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01164
+    },
+    {
+      "case": "coinbase.html:2119864402480706004",
+      "verdict": "pass",
+      "heightDelta": 0.5,
+      "lines": {
+        "chrome": 5,
+        "xeet": 5,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01605
+    },
+    {
+      "case": "coinbase.html:2119810717591519256",
+      "verdict": "pass",
+      "heightDelta": 0.63,
+      "lines": {
+        "chrome": 3,
+        "xeet": 3,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01762
+    },
+    {
+      "case": "coinbase.html:2119479038683336714",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 1,
+        "xeet": 1,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01715
+    },
+    {
+      "case": "elonmusk.html:2119617455102333206",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 4,
+        "xeet": 4,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01913
+    },
+    {
+      "case": "elonmusk.html:2119989523748905221",
+      "verdict": "pass",
+      "heightDelta": 0.61,
+      "lines": {
+        "chrome": 1,
+        "xeet": 1,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01507
+    },
+    {
+      "case": "elonmusk.html:2119989362725396589",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 1,
+        "xeet": 1,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.0171
+    },
+    {
+      "case": "elonmusk.html:2119909709197279420",
+      "verdict": "pass",
+      "heightDelta": 0.63,
+      "lines": {
+        "chrome": 1,
+        "xeet": 1,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01423
+    },
+    {
+      "case": "elonmusk.html:2119812607117062451",
+      "verdict": "pass",
+      "heightDelta": 0.56,
+      "lines": {
+        "chrome": 1,
+        "xeet": 1,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01616
+    },
+    {
+      "case": "gamespot.html:2119928147399360826",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 2,
+        "xeet": 2,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.00591
+    },
+    {
+      "case": "gamespot.html:2119915615347753088",
+      "verdict": "pass",
+      "heightDelta": 0.53,
+      "lines": {
+        "chrome": 2,
+        "xeet": 2,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01272
+    },
+    {
+      "case": "gamespot.html:2119913028619477377",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 1,
+        "xeet": 1,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.00366
+    },
+    {
+      "case": "gamespot.html:2119897962507542900",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 2,
+        "xeet": 2,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.00602
+    },
+    {
+      "case": "gamespot.html:2119885453965025432",
+      "verdict": "pass",
+      "heightDelta": 0.5,
+      "lines": {
+        "chrome": 2,
+        "xeet": 2,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01534
+    },
+    {
+      "case": "github.html:2115480207469560109",
+      "verdict": "pass",
+      "heightDelta": 0.5,
+      "lines": {
+        "chrome": 6,
+        "xeet": 6,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01403
+    },
+    {
+      "case": "github.html:2119486448290120108",
+      "verdict": "pass",
+      "heightDelta": 0.5,
+      "lines": {
+        "chrome": 2,
+        "xeet": 2,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01415
+    },
+    {
+      "case": "github.html:2119217137579332023",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 3,
+        "xeet": 3,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.00625
+    },
+    {
+      "case": "github.html:2119133311465353675",
+      "verdict": "pass",
+      "heightDelta": 0.5,
+      "lines": {
+        "chrome": 5,
+        "xeet": 5,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01778
+    },
+    {
+      "case": "jack-20.html:20",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 1,
+        "xeet": 1,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01166
+    },
+    {
+      "case": "jack-20.html:1770825760162353449",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 1,
+        "xeet": 1,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01145
+    },
+    {
+      "case": "jack-20.html:2020204145366720816",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 1,
+        "xeet": 1,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.0168
+    },
+    {
+      "case": "netflix.html:2119794639431442483",
+      "verdict": "pass",
+      "heightDelta": 0.5,
+      "lines": {
+        "chrome": 1,
+        "xeet": 1,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.00994
+    },
+    {
+      "case": "netflix.html:2119935569748754642",
+      "verdict": "pass",
+      "heightDelta": 0.5,
+      "lines": {
+        "chrome": 2,
+        "xeet": 2,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.0106
+    },
+    {
+      "case": "netflix.html:2119882721740640571",
+      "verdict": "pass",
+      "heightDelta": 0.5,
+      "lines": {
+        "chrome": 2,
+        "xeet": 2,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01188
+    },
+    {
+      "case": "netflix.html:2119837421357400445",
+      "verdict": "pass",
+      "heightDelta": 0.34,
+      "lines": {
+        "chrome": 3,
+        "xeet": 3,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01222
+    },
+    {
+      "case": "netflix.html:2119823581336990127",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 5,
+        "xeet": 5,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.00643
+    },
+    {
+      "case": "pcgamer.html:2119950747110715749",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 1,
+        "xeet": 1,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.00392
+    },
+    {
+      "case": "poll-musk.html:1605372724800393216",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 2,
+        "xeet": 2,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.02095
+    },
+    {
+      "case": "poll-musk.html:1604669565090275328",
+      "verdict": "pass",
+      "heightDelta": 0.02,
+      "lines": {
+        "chrome": 1,
+        "xeet": 1,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.0138
+    },
+    {
+      "case": "premierleague.html:2119867620283359247",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 2,
+        "xeet": 2,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.00464
+    },
+    {
+      "case": "premierleague.html:2119852528271507648",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 3,
+        "xeet": 3,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.00884
+    },
+    {
+      "case": "premierleague.html:2119844972061155706",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 2,
+        "xeet": 2,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.00918
+    },
+    {
+      "case": "premierleague.html:2119837430488371518",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 3,
+        "xeet": 3,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.00784
+    },
+    {
+      "case": "premierleague.html:2119829871513731226",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 2,
+        "xeet": 2,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.00562
+    },
+    {
+      "case": "stripe.html:2115122346075832468",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 3,
+        "xeet": 3,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01345
+    },
+    {
+      "case": "stripe.html:2118437899545038964",
+      "verdict": "pass",
+      "heightDelta": 0.55,
+      "lines": {
+        "chrome": 6,
+        "xeet": 6,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01406
+    },
+    {
+      "case": "stripe.html:2116302358124634622",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 4,
+        "xeet": 4,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01971
+    },
+    {
+      "case": "stripe.html:2115514823769309430",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 4,
+        "xeet": 4,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01592
+    },
+    {
+      "case": "stripe.html:2114800743471521958",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 1,
+        "xeet": 1,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.00955
+    },
+    {
+      "case": "text-BBCWorld.html:2119986659206832581",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 3,
+        "xeet": 3,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.00777
+    },
+    {
+      "case": "text-GoogleAI.html:2118389961426874879",
+      "verdict": "pass",
+      "heightDelta": 0.5,
+      "lines": {
+        "chrome": 5,
+        "xeet": 5,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01735
+    },
+    {
+      "case": "text-GoogleAI.html:2115489593818816591",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 6,
+        "xeet": 6,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01381
+    },
+    {
+      "case": "text-GoogleAI.html:2115114625985368299",
+      "verdict": "pass",
+      "heightDelta": 0.5,
+      "lines": {
+        "chrome": 5,
+        "xeet": 5,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.0198
+    },
+    {
+      "case": "text-Microsoft.html:2119871769444003936",
+      "verdict": "pass",
+      "heightDelta": 0.53,
+      "lines": {
+        "chrome": 4,
+        "xeet": 4,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01706
+    },
+    {
+      "case": "text-Microsoft.html:2119526837751857312",
+      "verdict": "pass",
+      "heightDelta": 0.5,
+      "lines": {
+        "chrome": 3,
+        "xeet": 3,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01649
+    },
+    {
+      "case": "text-Microsoft.html:2117308255332360316",
+      "verdict": "pass",
+      "heightDelta": 0.41,
+      "lines": {
+        "chrome": 4,
+        "xeet": 4,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01802
+    },
+    {
+      "case": "text-Microsoft.html:2117041202205990990",
+      "verdict": "pass",
+      "heightDelta": 0.5,
+      "lines": {
+        "chrome": 3,
+        "xeet": 3,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.0167
+    },
+    {
+      "case": "text-OurWorldInData.html:2007484286581059858",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 1,
+        "xeet": 1,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.00473
+    },
+    {
+      "case": "text-OurWorldInData.html:2119822799904649532",
+      "verdict": "pass",
+      "heightDelta": 0.81,
+      "lines": {
+        "chrome": 5,
+        "xeet": 5,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01638
+    },
+    {
+      "case": "text-OurWorldInData.html:2119097734107918819",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 6,
+        "xeet": 6,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01395
+    },
+    {
+      "case": "text-OurWorldInData.html:2118735737851904231",
+      "verdict": "pass",
+      "heightDelta": 0.81,
+      "lines": {
+        "chrome": 4,
+        "xeet": 4,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.02315
+    },
+    {
+      "case": "text-OurWorldInData.html:2118373241857192383",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 5,
+        "xeet": 5,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.0168
+    },
+    {
+      "case": "text-ProductHunt.html:2119853187939381623",
+      "verdict": "pass",
+      "heightDelta": 0.41,
+      "lines": {
+        "chrome": 5,
+        "xeet": 5,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01594
+    },
+    {
+      "case": "text-ProductHunt.html:2119849881405972631",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 1,
+        "xeet": 1,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01435
+    },
+    {
+      "case": "text-ProductHunt.html:2119797677177147635",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 2,
+        "xeet": 2,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.02584
+    },
+    {
+      "case": "text-TheAtlantic.html:2119988471032844498",
+      "verdict": "pass",
+      "heightDelta": 0.41,
+      "lines": {
+        "chrome": 5,
+        "xeet": 5,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01795
+    },
+    {
+      "case": "text-TheAtlantic.html:2119962005108834687",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 3,
+        "xeet": 3,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.00937
+    },
+    {
+      "case": "text-UN.html:2118780461094678793",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 5,
+        "xeet": 5,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.00755
+    },
+    {
+      "case": "text-UN.html:2120018865677865004",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 5,
+        "xeet": 5,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01365
+    },
+    {
+      "case": "text-UN.html:2119867870838391142",
+      "verdict": "pass",
+      "heightDelta": 0.34,
+      "lines": {
+        "chrome": 5,
+        "xeet": 5,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01577
+    },
+    {
+      "case": "text-UN.html:2119775063725449450",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 5,
+        "xeet": 5,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01583
+    },
+    {
+      "case": "text-UN.html:2119656477912895906",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 4,
+        "xeet": 4,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01746
+    },
+    {
+      "case": "text-WHO.html:2118382547532947886",
+      "verdict": "pass",
+      "heightDelta": 0.64,
+      "lines": {
+        "chrome": 7,
+        "xeet": 7,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01722
+    },
+    {
+      "case": "text-WHO.html:2119745075815055445",
+      "verdict": "pass",
+      "heightDelta": 0.78,
+      "lines": {
+        "chrome": 6,
+        "xeet": 6,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01971
+    },
+    {
+      "case": "text-WHO.html:2119516560926650463",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 4,
+        "xeet": 4,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01276
+    },
+    {
+      "case": "text-bellingcat.html:2008132967756095588",
+      "verdict": "pass",
+      "heightDelta": 0.5,
+      "lines": {
+        "chrome": 3,
+        "xeet": 3,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.0186
+    },
+    {
+      "case": "text-bellingcat.html:2007636993694675136",
+      "verdict": "pass",
+      "heightDelta": 0.5,
+      "lines": {
+        "chrome": 4,
+        "xeet": 4,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01748
+    },
+    {
+      "case": "text-bellingcat.html:2003089556057579691",
+      "verdict": "pass",
+      "heightDelta": 0.5,
+      "lines": {
+        "chrome": 4,
+        "xeet": 4,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.0184
+    },
+    {
+      "case": "text-cloudflare.html:2118694645538460046",
+      "verdict": "pass",
+      "heightDelta": 0.88,
+      "lines": {
+        "chrome": 6,
+        "xeet": 6,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.02069
+    },
+    {
+      "case": "text-cloudflare.html:2118631981520990698",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 2,
+        "xeet": 2,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.02452
+    },
+    {
+      "case": "text-engadget.html:2119969897614651734",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 3,
+        "xeet": 3,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.00839
+    },
+    {
+      "case": "text-engadget.html:2119966653207248955",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 1,
+        "xeet": 1,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01075
+    },
+    {
+      "case": "text-engadget.html:2119959244078194965",
+      "verdict": "pass",
+      "heightDelta": 0.41,
+      "lines": {
+        "chrome": 2,
+        "xeet": 2,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01806
+    },
+    {
+      "case": "text-engadget.html:2119954766448976103",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 2,
+        "xeet": 2,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.00832
+    },
+    {
+      "case": "text-engadget.html:2119943593116803254",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 2,
+        "xeet": 2,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.00898
+    },
+    {
+      "case": "text-firefox.html:2119847213828579413",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 3,
+        "xeet": 3,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.00617
+    },
+    {
+      "case": "text-firefox.html:2116208137632174193",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 1,
+        "xeet": 1,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.00892
+    },
+    {
+      "case": "text-firefox.html:2114498937432441230",
+      "verdict": "pass",
+      "heightDelta": 0.5,
+      "lines": {
+        "chrome": 5,
+        "xeet": 5,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01385
+    },
+    {
+      "case": "text-firefox.html:2113342891699392808",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 5,
+        "xeet": 5,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.02607
+    },
+    {
+      "case": "text-govuk.html:2119377478514819364",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 1,
+        "xeet": 1,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.0181
+    },
+    {
+      "case": "text-govuk.html:2118355651105902704",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 2,
+        "xeet": 2,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01641
+    },
+    {
+      "case": "text-karpathy.html:2116957135661945283",
+      "verdict": "pass",
+      "heightDelta": 0.89,
+      "lines": {
+        "chrome": 6,
+        "xeet": 6,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01562
+    },
+    {
+      "case": "text-karpathy.html:2109361546505966046",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 5,
+        "xeet": 5,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01936
+    },
+    {
+      "case": "text-karpathy.html:2105909609487872075",
+      "verdict": "pass",
+      "heightDelta": 0.06,
+      "lines": {
+        "chrome": 3,
+        "xeet": 3,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01792
+    },
+    {
+      "case": "text-karpathy.html:2105819303471976479",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 5,
+        "xeet": 5,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01836
+    },
+    {
+      "case": "text-levelsio.html:2116843791214629021",
+      "verdict": "pass",
+      "heightDelta": 0.5,
+      "lines": {
+        "chrome": 2,
+        "xeet": 2,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01037
+    },
+    {
+      "case": "text-levelsio.html:2119945847009862137",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 1,
+        "xeet": 1,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01096
+    },
+    {
+      "case": "text-levelsio.html:2119915360849727842",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 2,
+        "xeet": 2,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.02174
+    },
+    {
+      "case": "text-levelsio.html:2119775037687259452",
+      "verdict": "pass",
+      "heightDelta": 0.97,
+      "lines": {
+        "chrome": 2,
+        "xeet": 2,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01856
+    },
+    {
+      "case": "text-levelsio.html:2119773878222549451",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 2,
+        "xeet": 2,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.0172
+    },
+    {
+      "case": "text-paulg.html:2119446638708301894",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 2,
+        "xeet": 2,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01668
+    },
+    {
+      "case": "text-paulg.html:2119414341980012850",
+      "verdict": "pass",
+      "heightDelta": 0.42,
+      "lines": {
+        "chrome": 2,
+        "xeet": 2,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01365
+    },
+    {
+      "case": "text-paulg.html:2119410465126432939",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 4,
+        "xeet": 4,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.02114
+    },
+    {
+      "case": "text-paulg.html:2119051661276742141",
+      "verdict": "pass",
+      "heightDelta": 0.63,
+      "lines": {
+        "chrome": 3,
+        "xeet": 3,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01727
+    },
+    {
+      "case": "text-paulg.html:2118783984616591857",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 4,
+        "xeet": 4,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.02809
+    },
+    {
+      "case": "text-stripe.html:2115122346075832468",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 3,
+        "xeet": 3,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01346
+    },
+    {
+      "case": "text-stripe.html:2118437899545038964",
+      "verdict": "pass",
+      "heightDelta": 0.55,
+      "lines": {
+        "chrome": 7,
+        "xeet": 7,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01417
+    },
+    {
+      "case": "text-stripe.html:2116302358124634622",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 4,
+        "xeet": 4,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01972
+    },
+    {
+      "case": "text-stripe.html:2115514823769309430",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 4,
+        "xeet": 4,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01592
+    },
+    {
+      "case": "text-stripe.html:2114800743471521958",
+      "verdict": "pass",
+      "heightDelta": 0,
+      "lines": {
+        "chrome": 1,
+        "xeet": 1,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.00956
+    },
+    {
+      "case": "text-vercel.html:2117726156992753721",
+      "verdict": "pass",
+      "heightDelta": 0.5,
+      "lines": {
+        "chrome": 4,
+        "xeet": 4,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01047
+    },
+    {
+      "case": "text-vercel.html:2119870492983324994",
+      "verdict": "pass",
+      "heightDelta": 0.7,
+      "lines": {
+        "chrome": 3,
+        "xeet": 3,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01067
+    },
+    {
+      "case": "text-vercel.html:2117038247549231138",
+      "verdict": "pass",
+      "heightDelta": 0.5,
+      "lines": {
+        "chrome": 4,
+        "xeet": 4,
+        "sameContent": true
+      },
+      "lineHash": "cbe5cfdf7c2118a9",
+      "pixelRatio": 0.01413
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "$comment": "Budgets from PLAN.md §12, sized for shared GitHub Actions runners (2x CPU generation variance). Times are p50 microseconds; the runner fails when a row exceeds its budget, and warns at 80% of it. `binary_bytes` is the stripped release binary: ~7 MB with `XEET_FONT_PACKS=core` (the shipped layout) and ~49 MB for a local build that embeds every face.",
+  "rows": {
+    "explain_280": { "p50_us": 200, "what": "explain (no pixels), 280-character post" },
+    "explain_25000": { "p50_us": 4000, "what": "explain, 25,000-character post" },
+    "png_text_390_3x": { "p50_us": 10000, "what": "PNG of a text post, 390 wide at 3×" },
+    "png_4_placeholders": { "p50_us": 10000, "what": "PNG with four placeholder media" },
+    "png_4_photos_800": { "p50_us": 80000, "what": "PNG with four real 800x600 photos decoded and scaled" },
+    "png_4_photos_1600": { "p50_us": 220000, "what": "the same at 1600x900: ~4x the pixels, a stress case with its own budget" },
+    "explain_4_real_images": { "p50_us": 2000, "what": "explain of a post with four real images (must not decode)" }
+  },
+  "cold_start_us": { "p50_us": 40000, "what": "cold start: process spawn plus a first render" },
+  "binary_bytes": { "max": 52428800, "what": "binary size; core-only release ~7 MB, full local build with every face ~49 MB, lazy packs 39 MB beside it" }
+}

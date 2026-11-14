@@ -1,0 +1,178 @@
+name: release
+
+# Builds the `xeet` binary for every platform `npm i -g xeet-cli` supports and
+# assembles the npm packages. Tags build and attach the artifacts; publishing to
+# npm only happens when this is run by hand with `publish: true` and an
+# NPM_TOKEN secret is set.
+#
+# Publishing is deliberately manual: the binary embeds X's fonts (Chirp), Arial,
+# Apple Color Emoji and Hiragino Sans, so redistribution needs licensing sign-off
+# before anything goes to a public registry.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Publish the packages to npm"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # A tag is a promise that the pushed commit is the release. Refuse to build
+  # one whose version disagrees with the packages, before the expensive matrix.
+  verify:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: The tag is vX.Y.Z and both packages say X.Y.Z
+        if: github.ref_type == 'tag'
+        run: |
+          tag="$GITHUB_REF_NAME"
+          case "$tag" in
+            v[0-9]*.[0-9]*.[0-9]*) ;;
+            *) echo "::error::tag $tag is not vX.Y.Z"; exit 1 ;;
+          esac
+          version="${tag#v}"
+          failed=0
+          for pkg in packages/xeet packages/xeet-cli; do
+            actual=$(node -p "require('./$pkg/package.json').version")
+            if [ "$actual" != "$version" ]; then
+              echo "::error file=$pkg/package.json::$pkg is $actual but the tag $tag says $version"
+              failed=1
+            else
+              echo "$pkg: $actual matches $tag"
+            fi
+          done
+          exit "$failed"
+
+  build:
+    needs: verify
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { platform: darwin-arm64, os: macos-14, target: aarch64-apple-darwin, exe: xeet }
+          - { platform: darwin-x64, os: macos-15-intel, target: x86_64-apple-darwin, exe: xeet }
+          - { platform: linux-x64, os: ubuntu-24.04, target: x86_64-unknown-linux-gnu, exe: xeet }
+          - { platform: linux-arm64, os: ubuntu-24.04-arm, target: aarch64-unknown-linux-gnu, exe: xeet }
+          - { platform: win32-x64, os: windows-latest, target: x86_64-pc-windows-msvc, exe: xeet.exe }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with: { targets: "${{ matrix.target }}" }
+      - uses: Swatinem/rust-cache@v2
+        with: { key: "${{ matrix.target }}" }
+      - name: Build
+        env:
+          # Embed Chirp + Arial only; the npm packages ship the lazy packs.
+          XEET_FONT_PACKS: core
+        # `--locked`: the release is built from the committed Cargo.lock, never
+        # from a dependency set that happened to resolve that day.
+        run: cargo build --release --locked -p xeet-cli --bin xeet --target ${{ matrix.target }}
+      - name: Smoke test
+        shell: bash
+        run: |
+          echo '{"text":"release smoke test"}' | "target/${{ matrix.target }}/release/${{ matrix.exe }}" render - -o smoke.png
+          test -s smoke.png
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xeet-${{ matrix.platform }}
+          path: target/${{ matrix.target }}/release/${{ matrix.exe }}
+          retention-days: 14
+
+  package:
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      # Creating the GitHub Release and uploading assets to it.
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, registry-url: "https://registry.npmjs.org" }
+      - uses: actions/download-artifact@v4
+        with: { path: bins, pattern: "xeet-*" }
+      - name: Build the lazy font packs
+        run: node tools/ship/build-font-packs.mjs
+      - name: Assemble the npm packages
+        run: |
+          args=()
+          for dir in bins/xeet-*; do
+            platform="${dir#bins/xeet-}"
+            exe="$dir/xeet"; [ -f "$exe" ] || exe="$dir/xeet.exe"
+            args+=(--bin "$platform=$exe")
+          done
+          node tools/ship/package-cli.mjs "${args[@]}" --out dist/npm
+      - uses: actions/upload-artifact@v4
+        with: { name: npm-packages, path: dist/npm, retention-days: 14 }
+
+      # --- Tag releases: the packed tarballs as release assets ----------------
+      - name: Pack the CLI tarballs
+        if: github.ref_type == 'tag'
+        run: |
+          mkdir -p dist/tarballs
+          packs="$PWD/dist/tarballs"
+          for dir in dist/npm/cli-* dist/npm/cli; do
+            # From inside the directory, so the tarball is named after the
+            # package (`xeet-cli-linux-x64-<version>.tgz`), not the folder.
+            ( cd "$dir" && npm pack --pack-destination "$packs" >/dev/null )
+          done
+          ls -l dist/tarballs
+      - name: Create the release and attach the tarballs
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Refreshes an existing release rather than failing on a re-run.
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 ||
+            gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --generate-notes
+          gh release upload "$GITHUB_REF_NAME" dist/tarballs/*.tgz --clobber
+
+      # --- Manual publish ----------------------------------------------------
+      # The core package ships the WASM module, so it needs the toolchain and
+      # the vendored X assets the binary builds already had.
+      - name: Toolchain for the WASM module
+        if: github.event_name == 'workflow_dispatch' && inputs.publish
+        uses: dtolnay/rust-toolchain@stable
+        with: { targets: wasm32-unknown-unknown }
+      - name: Install wasm-bindgen (must match the crate pin)
+        if: github.event_name == 'workflow_dispatch' && inputs.publish
+        uses: taiki-e/install-action@v2
+        with: { tool: wasm-bindgen@0.2.130 }
+      - name: Build the WASM module for the core package
+        if: github.event_name == 'workflow_dispatch' && inputs.publish
+        env:
+          XEET_VENDOR_URL: ${{ secrets.XEET_VENDOR_URL }}
+          XEET_VENDOR_TOKEN: ${{ secrets.XEET_VENDOR_TOKEN }}
+        run: |
+          node tools/ship/fetch-vendor.mjs
+          node tools/ship/build-wasm.mjs
+      - name: Stage @xeet/core
+        if: github.event_name == 'workflow_dispatch' && inputs.publish
+        run: |
+          rm -rf dist/npm/core
+          cp -R packages/xeet dist/npm/core
+          cp LICENSE dist/npm/core/LICENSE
+          rm -rf dist/npm/core/test dist/npm/core/node_modules
+          node -p 'require("./dist/npm/core/package.json").name + "@" + require("./dist/npm/core/package.json").version'
+      - name: Publish to npm
+        if: github.event_name == 'workflow_dispatch' && inputs.publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          test -n "$NODE_AUTH_TOKEN" || { echo "::error::NPM_TOKEN is not set"; exit 1; }
+          # Publish @xeet/core first, then @xeet/cli-* platform packages, then @xeet/cli.
+          ( cd dist/npm/core && npm publish --access public )
+          for dir in dist/npm/cli-*; do ( cd "$dir" && npm publish --access public ); done
+          ( cd dist/npm/cli && npm publish --access public )

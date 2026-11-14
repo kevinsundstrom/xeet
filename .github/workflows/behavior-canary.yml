@@ -1,0 +1,131 @@
+# Pipeline 4 (PLAN.md §11): the behavior canary, weekly.
+#
+# Server behavior — truncation, card precedence, URL display — does not show up
+# in a stylesheet, so it needs its own check. Two halves:
+#
+# - passive (no account): assert the derived rules on a fresh sample of recent
+#   public posts. Runs in `ci.yml` on every PR against the pinned corpus, and
+#   here against a fresh capture.
+# - active (needs the test account): post a reduced matrix of ~15 posts, capture
+#   them, compare with what xeet predicted, delete them. This is what catches a
+#   change in precedence rules, and it is the only job that writes to X.
+#
+# The active half stays off until the account exists: `XEET_TEST_ACCOUNT_HANDLE`
+# is the switch, and the sync/canary code refuses to post without it.
+name: behavior-canary
+
+on:
+  schedule:
+    - cron: "41 6 * * 1" # Mondays, 06:41 UTC
+  workflow_dispatch:
+    inputs:
+      active:
+        description: "Run the active half (posts from the test account)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  # X's assets live in the private store; `secrets` is not available in a
+  # job-level `if`, so availability is decided here and passed on as an output.
+  # A missing secret skips the asset-dependent job with a notice, never a red run.
+  vendor:
+    runs-on: ubuntu-latest
+    outputs:
+      available: ${{ steps.check.outputs.available }}
+    steps:
+      - id: check
+        env:
+          URL: ${{ secrets.XEET_VENDOR_URL }}
+          TOKEN: ${{ secrets.XEET_VENDOR_TOKEN }}
+        run: |
+          if [ -n "$URL" ] && [ -n "$TOKEN" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Upstream assets not configured::XEET_VENDOR_URL and XEET_VENDOR_TOKEN are unset, so the jobs that build \`xeet-core\` are skipped. docs/CI.md says what the secrets enable."
+            {
+              echo "### Upstream assets not configured"
+              echo ""
+              echo "\`XEET_VENDOR_URL\` and \`XEET_VENDOR_TOKEN\` are unset, so the jobs that build \`xeet-core\` were skipped. See docs/CI.md."
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  passive:
+    needs: vendor
+    if: needs.vendor.outputs.available == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Restore the vendored X assets
+        env:
+          XEET_VENDOR_URL: ${{ secrets.XEET_VENDOR_URL }}
+          XEET_VENDOR_TOKEN: ${{ secrets.XEET_VENDOR_TOKEN }}
+        run: node tools/ship/fetch-vendor.mjs
+      - name: Fetch a fresh sample of public posts
+        run: |
+          # Low volume, logged out, cached: PLAN.md §11 "what could break the
+          # machinery itself". `--budget` is the request budget.
+          node tools/capture.mjs --budget 200
+      - name: Rules canary, offline against the pinned corpus
+        run: node tools/rules/canary.mjs --offline
+      - name: Rules canary, against the fresh sample
+        # No `|| echo "::warning::"`: a disagreement here is the whole point of
+        # the job, and it has to reach the issue step below.
+        run: node tools/rules/canary.mjs
+      - name: File an issue when a rule moved
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          # Deduplicated by title, like upstream-watch.yml, and without a label:
+          # a missing repository label would fail `gh issue create`, which is the
+          # one thing this step must not do.
+          TITLE="Behavior canary failed: an X rule moved"
+          EXISTING=$(gh issue list --state open --search "\"$TITLE\" in:title" --json number --jq '.[0].number // empty')
+          BODY="The weekly canary disagrees with the derived rules. See $RUN_URL. This is a rule change, not a token change, so it needs a person (PLAN.md §11 pipeline 4)."
+          if [ -n "$EXISTING" ]; then
+            gh issue comment "$EXISTING" --body "$BODY"
+          else
+            gh issue create --title "$TITLE" --body "$BODY"
+          fi
+
+  active:
+    # Off unless the test account is configured and the run is asked for it.
+    needs: vendor
+    if: needs.vendor.outputs.available == 'true' && github.event_name == 'workflow_dispatch' && inputs.active == true && vars.XEET_TEST_ACCOUNT_READY == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: behavior-lab
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Restore the vendored X assets
+        env:
+          XEET_VENDOR_URL: ${{ secrets.XEET_VENDOR_URL }}
+          XEET_VENDOR_TOKEN: ${{ secrets.XEET_VENDOR_TOKEN }}
+        run: node tools/ship/fetch-vendor.mjs
+      - name: Post, capture, compare, delete
+        env:
+          XEET_TEST_ACCOUNT_HANDLE: ${{ secrets.XEET_TEST_ACCOUNT_HANDLE }}
+          XEET_TEST_ACCOUNT_TOKEN: ${{ secrets.XEET_TEST_ACCOUNT_TOKEN }}
+        run: |
+          if [ ! -f tools/rules/lab.mjs ]; then
+            echo "::error::tools/rules/lab.mjs is not implemented"
+            exit 1
+          fi
+          if [ -z "$XEET_TEST_ACCOUNT_TOKEN" ]; then
+            echo "::error::no test account configured; see docs/CI.md"
+            exit 1
+          fi
+          node tools/rules/lab.mjs --matrix reduced --cleanup

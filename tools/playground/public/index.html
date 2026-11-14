@@ -1,0 +1,458 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>xeet playground</title>
+<meta name="color-scheme" content="light dark">
+<!-- The renderer is the biggest thing on the page and the wasm target asks for
+     it on the first keystroke; start it with the stylesheet. -->
+<link rel="preload" href="/wasm/xeet_wasm_bg.wasm" as="fetch" type="application/wasm" crossorigin>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="app">
+
+  <!-- ============================================================ top bar -->
+  <header class="topbar">
+    <div class="brand"><span class="mark" aria-hidden="true">x</span><span class="word">xeet</span></div>
+    <div class="live" id="live" data-state="busy"><span class="dot"></span><span id="liveText" class="sr-only">booting</span></div>
+
+    <div class="segmented xs" id="surface" role="group" aria-label="Surface">
+      <button data-v="web-timeline" class="on">Timeline</button>
+      <button data-v="web-detail">Detail</button>
+    </div>
+    <div class="segmented xs" id="theme" role="group" aria-label="Theme">
+      <button data-v="light" class="on">Light</button>
+      <button data-v="dark">Dark</button>
+    </div>
+    <select id="device" class="device-select" aria-label="Device preset"></select>
+    <button class="btn ghost icon" id="viewBtn" type="button" aria-expanded="false" aria-controls="viewPop"
+      title="View: width, density, zoom, clock, links" aria-label="View options">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v3M12 18.2v3M2.8 12h3M18.2 12h3"/></svg>
+    </button>
+
+    <span class="spacer"></span>
+    <div class="target-chips" id="targetChips"></div>
+    <button class="btn ghost sm" id="inspectBtn" type="button" aria-pressed="false" title="Diff, report, matrix (D)">Inspect</button>
+  </header>
+
+  <!-- ========================================================= view popover -->
+  <div class="pop view-pop" id="viewPop" hidden>
+    <div class="pop-head"><span>View</span><button class="btn ghost xs" id="viewClose" type="button" aria-label="Close">×</button></div>
+    <div class="view-grid">
+      <div class="field">
+        <span class="label">Width <em class="mono tiny" id="widthVal">390</em></span>
+        <div class="presets" id="widthPresets">
+          <button data-w="382">382<em>Duo</em></button>
+          <button data-w="390" class="on">390<em>iPhone</em></button>
+          <button data-w="430">430</button>
+          <button data-w="600">600<em>column</em></button>
+        </div>
+        <input id="width" type="range" min="280" max="1200" step="1" value="390" aria-label="Width in CSS pixels">
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <span class="label">DPR</span>
+          <div class="segmented xs" id="dpr" role="group" aria-label="Device pixel ratio">
+            <button data-v="1">1</button><button data-v="2" class="on">2</button><button data-v="3">3</button>
+          </div>
+        </div>
+        <div class="field">
+          <span class="label">Font <em class="mono tiny" id="fontScaleVal">×1.00</em></span>
+          <input id="fontScale" type="range" min="0.8" max="1.35" step="0.05" value="1" aria-label="Font scale">
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <span class="label">Columns</span>
+          <div class="segmented xs" id="colZoom" role="group" aria-label="Column zoom">
+            <button data-z="fit" class="on">Fit</button><button data-z="1">100%</button><button data-z="0.75">75%</button><button data-z="0.5">50%</button>
+          </div>
+        </div>
+        <div class="field">
+          <span class="label">Clock</span>
+          <div class="clock-row" id="clockRow" title="The instant every target renders this post at">
+            <span class="mono tiny" id="clockValue">—</span>
+            <label class="check"><input type="checkbox" id="clockFreeze"><span>freeze</span></label>
+            <button class="btn ghost xs" id="clockNow" type="button">now</button>
+          </div>
+        </div>
+      </div>
+      <label class="pair clock-zone" id="clockZoneRow" title="Times are rewritten into this zone before any target sees them">
+        <span>Time zone</span><select id="clockZone"></select>
+      </label>
+      <div class="flags">
+        <label class="check" title="Ask /api/resolve for the link cards in this text"><input type="checkbox" id="resolveLinks" checked><span>resolve links</span></label>
+        <label class="check" title="Fetch the card images too (media: true), slower"><input type="checkbox" id="realImages"><span>real images</span></label>
+      </div>
+      <div class="pop-div"></div>
+      <div class="view-foot">
+        <button class="btn ghost sm" id="rerender" type="button" title="Re-render every target (⌘↵)">Re-render</button>
+        <span class="spacer"></span>
+        <span class="mono tiny faint" id="upstream" title="upstream X app version"></span>
+        <a id="repo" href="https://github.com/vercel-labs/xeet" target="_blank" rel="noreferrer" class="tiny faint">repo</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================== shell -->
+  <main class="shell">
+
+    <!-- ----------------------------------------------------- the composer -->
+    <aside class="composer" id="composer">
+      <div class="c-head">
+        <button class="c-author" id="authorBtn" type="button" aria-expanded="false" title="Author & overrides">
+          <img class="c-ava" id="avaImg" alt="" width="36" height="36" hidden>
+          <span class="c-who">
+            <span class="c-name"><span id="avaName">Vercel</span>
+              <svg class="cb" id="avaBadge" viewBox="0 0 22 22" aria-hidden="true" hidden><path d="M20.4 11.1 11.1 20.4a1.5 1.5 0 0 1-2.2 0L1.6 13.1a1.5 1.5 0 0 1 0-2.2L11 1.6a1.5 1.5 0 0 1 2.2 0l7.2 7.3a1.5 1.5 0 0 1 0 2.2Z" opacity=".15"/><path d="m8.6 11.4 2.3 2.3 4.4-4.6" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </span>
+            <span class="c-handle" id="avaHandle">@vercel</span>
+          </span>
+        </button>
+        <button class="btn ghost icon" id="drawerBtn" type="button" title="Media, card, quote, poll, advanced" aria-label="More post fields">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h.01M12 12h.01M19 12h.01" stroke-width="2.4" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+
+      <div class="c-body">
+        <div class="input-wrap" id="inputWrap">
+          <div class="hl" id="hl" aria-hidden="true"><div class="hl-inner" id="hlInner"></div></div>
+          <textarea id="input" rows="1" spellcheck="false" autocomplete="off" autocapitalize="off"
+            placeholder="What's happening?" aria-label="Post input"></textarea>
+        </div>
+
+        <div class="banner" id="banner" hidden></div>
+
+        <div class="c-attach">
+          <span class="chip kind" id="detect" data-kind="text">text</span>
+          <span class="chip" id="linksChip" hidden></span>
+          <div class="segmented xs mode-pill" id="modePill" role="group" aria-label="How the post URL is attached" hidden></div>
+          <span class="detect-detail tiny faint" id="detectDetail"></span>
+        </div>
+
+        <div class="quote-slot" id="quoteSlot">
+          <div class="quote-slot-body" id="quoteSlotBody" hidden>
+            <div class="quote-slot-meta">
+              <span class="chip" id="quotePill" hidden></span>
+              <button class="btn ghost xs" id="quoteClear" type="button" title="Remove the quote">×</button>
+            </div>
+            <input id="quoteUrl" placeholder="Quote post URL: https://x.com/…/status/…" spellcheck="false" aria-label="Quote post URL">
+          </div>
+        </div>
+
+        <div class="quote-slot" id="mediaSlot" hidden>
+          <div class="quote-slot-meta">
+            <span class="chip" id="mediaPill" hidden></span>
+            <button class="btn ghost xs" id="mediaClear" type="button" title="Remove the video">×</button>
+          </div>
+          <input id="mediaUrl" placeholder="Video: …/status/…/video/1 or https://video.twimg.com/….mp4" spellcheck="false" aria-label="Video URL">
+        </div>
+
+        <div class="poll-slot" id="pollSlot" hidden>
+          <div class="quote-slot-meta"><span class="chip" id="pollPill">Poll</span><button class="btn ghost xs" id="pollClear" type="button" title="Remove the poll">×</button></div>
+          <div class="poll-choices">
+            <input id="pollA" placeholder="Choice 1" aria-label="Poll choice 1">
+            <input id="pollB" placeholder="Choice 2" aria-label="Poll choice 2">
+            <input id="pollC" placeholder="Choice 3" aria-label="Poll choice 3">
+            <input id="pollD" placeholder="Choice 4" aria-label="Poll choice 4">
+          </div>
+        </div>
+
+        <div class="card-chip" id="cardChip" hidden>
+          <span class="cc-text">Card: <b id="cardDomain">—</b></span>
+          <button class="btn ghost xs" id="cardRestore" type="button" title="Restore the card" hidden>↺</button>
+          <button class="btn ghost xs" id="cardDismiss" type="button" title="Dismiss the card (like × on the preview in X's composer)">×</button>
+        </div>
+
+        <div class="resolve-error" id="resolveError" hidden></div>
+
+        <div class="c-foot">
+          <div class="c-tools">
+            <button class="tool" id="toolQuote" type="button" title="Quote a post: attached out of band, 0 characters">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h9v9a5 5 0 0 1-5 5H6"/><path d="M14 10h6v3a3 3 0 0 1-3 3"/></svg><span>Quote</span></button>
+            <button class="tool" id="toolMedia" type="button" title="Post a video: a /video/1 or twimg URL becomes media">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="13" height="12" rx="2.5"/><path d="m16 11 5-3v8l-5-3Z"/></svg><span>Video</span></button>
+            <button class="tool" id="toolPoll" type="button" title="Poll">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 20V10M12 20V4M18 20v-6" stroke-width="2.6" stroke-linecap="round"/></svg><span>Poll</span></button>
+            <button class="tool" id="toolReply" type="button" title="Reply: X hides the leading mention">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 7 4 12l5 5"/><path d="M4 12h9a6 6 0 0 1 6 6"/></svg><span>Reply</span></button>
+          </div>
+          <div class="c-count" id="countWrap" title="weighted length">
+            <svg class="ring" viewBox="0 0 20 20" aria-hidden="true">
+              <circle cx="10" cy="10" r="8" class="ring-bg"></circle>
+              <circle id="ringArc" cx="10" cy="10" r="8" class="ring-arc" stroke-dasharray="0 50.27"></circle>
+            </svg>
+            <span id="charCount" class="mono">0</span>
+          </div>
+        </div>
+        <div class="c-long" id="longBadge" hidden>Long post · Show more</div>
+        <div class="c-actions">
+          <button class="btn ghost xs" id="sampleBtn" type="button" title="Load a sample">Sample</button>
+          <button class="btn ghost xs" id="clearBtn" type="button" title="Clear">Clear</button>
+          <span class="spacer"></span>
+          <span class="tiny faint"><kbd>⌘K</kbd> focus · <kbd>⌘↵</kbd> render</span>
+        </div>
+      </div>
+
+      <!-- ------------------------------------------- author / overrides pop -->
+      <div class="pop author-pop" id="authorPop" hidden>
+        <div class="pop-head"><span>Author & overrides</span><button class="btn ghost xs" id="authorPopClose" type="button" aria-label="Close">×</button></div>
+        <div class="presets-row" id="authorPresets">
+          <button type="button" data-preset="vercel">Vercel</button>
+          <button type="button" data-preset="rauchg">Guillermo Rauch</button>
+          <button type="button" data-preset="nasa">NASA</button>
+          <button type="button" data-preset="plain">Plain</button>
+        </div>
+          <section class="group" data-group="author">
+            <label class="toggle"><input type="checkbox" id="aOn"><span>Author</span></label>
+            <div class="fields" data-fields>
+              <label class="pair"><span>Name</span><input id="aName" placeholder="Vercel"></label>
+              <label class="pair"><span>Handle</span><input id="aHandle" placeholder="vercel" spellcheck="false"></label>
+              <label class="pair"><span>Verified</span>
+                <select id="aVerified">
+                  <option value="none">none</option>
+                  <option value="blue">blue</option>
+                  <option value="business">business</option>
+                  <option value="government">government</option>
+                </select>
+              </label>
+              <label class="pair"><span>Avatar</span><input id="aAvatar" type="file" accept="image/png,image/jpeg,image/webp"></label>
+              <div class="flags">
+                <label class="check"><input type="checkbox" id="aSquare"><span>square</span></label>
+                <label class="check"><input type="checkbox" id="aProtected"><span>protected</span></label>
+                <button class="btn ghost xs" id="aAvatarClear" type="button">clear avatar</button>
+              </div>
+              <label class="pair"><span>Affiliate</span><input id="aAffName" placeholder="organization name"></label>
+              <label class="pair"><span>Badge</span><input id="aAffBadge" type="file" accept="image/png"></label>
+            </div>
+          </section>
+
+          <section class="group" data-group="counts">
+            <label class="toggle"><input type="checkbox" id="cOn"><span>Counts</span></label>
+            <div class="fields" data-fields>
+              <div class="narrow">
+                <label class="pair"><span>Replies</span><input id="cReplies" type="number" min="0" placeholder="0"></label>
+                <label class="pair"><span>Reposts</span><input id="cReposts" type="number" min="0" placeholder="0"></label>
+                <label class="pair"><span>Likes</span><input id="cLikes" type="number" min="0" placeholder="0"></label>
+                <label class="pair"><span>Views</span><input id="cViews" type="number" min="0" placeholder="0"></label>
+                <label class="pair"><span>Bookmarks</span><input id="cBookmarks" type="number" min="0" placeholder="0"></label>
+              </div>
+            </div>
+          </section>
+
+          <section class="group" data-group="createdAt">
+            <label class="toggle"><input type="checkbox" id="tOn"><span>Timestamp</span></label>
+            <div class="fields" data-fields>
+              <label class="pair"><span>Created</span><input id="tCreated" type="datetime-local" step="1"></label>
+              <label class="pair"><span>Now</span><input id="tNow" placeholder="ISO 8601" spellcheck="false"></label>
+              <button class="btn ghost xs" id="tNowBtn" type="button">now = current time</button>
+            </div>
+          </section>
+
+        <div class="pop-div"></div>
+        <button class="btn ghost sm wide" id="drawerOpen" type="button">Media, card, quote, poll, advanced…</button>
+        <button class="btn ghost xs wide" id="resetPatch" type="button">Reset overrides</button>
+      </div>
+    </aside>
+
+    <!-- ---------------------------------------------------------- previews -->
+    <section class="stage">
+      <div class="notice" id="notice" hidden></div>
+      <div class="segmented xs" id="chromeMode" hidden role="group" aria-label="Chrome mode">
+        <button data-cmode="page" class="on" title="the captured x.com page itself">page</button>
+        <button data-cmode="replica" title="X's cell markup with this post's data">replica</button>
+      </div>
+      <div class="columns" id="columns" aria-live="polite"></div>
+    </section>
+  </main>
+
+  <!-- =========================================================== inspect -->
+  <section class="inspect" id="inspect" hidden aria-label="Inspect">
+    <div class="ins-bar">
+      <div class="segmented xs" id="insTabs" role="tablist" aria-label="Inspect">
+        <button data-tab="diff" role="tab" aria-selected="true" class="on">Diff</button>
+        <button data-tab="report" role="tab" aria-selected="false">Report</button>
+        <button data-tab="matrix" role="tab" aria-selected="false">Matrix</button>
+      </div>
+      <span class="spacer"></span>
+      <span class="tiny faint ins-hint">click any preview to compare</span>
+      <button class="btn ghost icon" id="insClose" type="button" title="Close (Esc)" aria-label="Close inspect">×</button>
+    </div>
+    <div class="ins-panes">
+      <div class="ins-pane" data-pane="diff">
+        <section class="card diff" id="diff">
+          <div class="card-head">
+            <h2>Diff</h2>
+            <div class="head-tools">
+              <span class="chip stat" id="diffStats">—</span>
+            </div>
+          </div>
+          <div class="diff-controls">
+            <label class="pair inline"><span>A</span><select id="diffA"></select></label>
+            <label class="pair inline"><span>B</span><select id="diffB"></select></label>
+            <div class="segmented" id="diffMode" role="group" aria-label="Diff mode">
+              <button data-mode="overlay" class="on">Overlay</button>
+              <button data-mode="flicker">Flicker</button>
+              <button data-mode="heatmap">Heatmap</button>
+              <button data-mode="side">Side</button>
+            </div>
+            <label class="slider inline" id="opacityWrap"><span>opacity</span>
+              <input id="diffOpacity" type="range" min="0" max="1" step="0.01" value="0.5">
+              <em class="mono tiny" id="diffOpacityVal">50%</em>
+            </label>
+            <div class="segmented sm" id="diffZoom" role="group" aria-label="Zoom">
+              <button data-z="1" class="on">1×</button>
+              <button data-z="2">2×</button>
+              <button data-z="4">4×</button>
+              <button data-z="8">8×</button>
+            </div>
+            <label class="check inline"><input type="checkbox" id="diffOutlines"><span>outlines</span></label>
+            <button class="btn ghost sm" id="diffReset" title="Reset pan and zoom">fit</button>
+          </div>
+          <div class="diff-stage" id="diffStage">
+            <div class="diff-world" id="diffWorld">
+              <div class="pane" id="paneA"><img id="imgA" alt="A"><canvas class="mask" id="maskCanvas" width="1" height="1"></canvas><canvas class="geom" id="geomA" width="1" height="1"></canvas></div>
+              <div class="pane" id="paneB"><img id="imgB" alt="B"><canvas class="geom" id="geomB" width="1" height="1"></canvas></div>
+              <canvas class="geom top" id="geomTop" width="1" height="1"></canvas>
+            </div>
+            <div class="diff-empty" id="diffEmpty">two renders to compare</div>
+          </div>
+          <div class="diff-legend">
+            <span class="lg"><i class="sw-a"></i><span id="legendA">A</span></span>
+            <span class="lg"><i class="sw-b"></i><span id="legendB">B</span></span>
+            <span class="lg"><i class="sw-diff"></i>differing pixels (±8, 1 px slack)</span>
+            <span class="spacer"></span>
+            <span class="tiny faint" id="diffNote"></span>
+          </div>
+        </section>
+      </div>
+      <div class="ins-pane" data-pane="report" hidden>
+        <section class="card report" id="report">
+          <div class="card-head">
+            <h2>Report</h2>
+            <div class="head-tools">
+              <label class="pair inline"><span>from</span><select id="reportTarget"></select></label>
+              <button class="btn ghost sm" id="matrixBtn" aria-pressed="false">Matrix</button>
+            </div>
+          </div>
+          <div class="report-body" id="reportBody"><p class="empty">no report yet</p></div>
+
+        </section>
+      </div>
+      <div class="ins-pane" data-pane="matrix" hidden>
+        <div class="matrix" id="matrix">
+          <div class="matrix-bar">
+            <span class="tiny faint">widths × themes</span>
+            <label class="pair inline"><span>target</span><select id="matrixTarget"></select></label>
+            <span class="spacer"></span>
+            <span class="tiny faint" id="matrixStatus"></span>
+            <button class="btn sm" id="matrixSheet">Save sheet PNG</button>
+          </div>
+          <div class="matrix-grid" id="matrixGrid"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================================================= more fields -->
+  <dialog class="more" id="drawer">
+    <div class="more-head">
+      <h2>More post fields</h2>
+      <span class="tiny faint">optional overrides</span>
+      <span class="spacer"></span>
+      <button class="btn ghost icon" id="drawerClose" type="button" title="Close" aria-label="Close">×</button>
+    </div>
+    <div class="drawer-body">
+        <section class="group" data-group="media">
+          <label class="toggle"><input type="checkbox" id="mOn"><span>Media</span></label>
+          <div class="fields" data-fields>
+            <div class="media-list" id="mList"></div>
+            <button class="btn ghost xs" id="mAdd" type="button">add image</button>
+          </div>
+        </section>
+
+
+        <section class="group" data-group="links">
+          <label class="toggle"><input type="checkbox" id="lOn"><span>Link card</span></label>
+          <div class="fields" data-fields>
+            <label class="pair"><span>URL</span><input id="lUrl" placeholder="https://…" spellcheck="false"></label>
+            <label class="pair"><span>Card</span>
+              <select id="lCard">
+                <option value="summary_large_image">summary_large_image</option>
+                <option value="summary">summary</option>
+                <option value="player">player</option>
+                <option value="app">app</option>
+                <option value="">none</option>
+              </select>
+            </label>
+            <label class="pair"><span>Title</span><input id="lTitle"></label>
+            <label class="pair"><span>Description</span><input id="lDesc"></label>
+            <label class="pair"><span>Domain</span><input id="lDomain" placeholder="example.com" spellcheck="false"></label>
+            <label class="pair"><span>Display</span><input id="lDisplay" placeholder="example.com/path" spellcheck="false"></label>
+            <div class="narrow2">
+              <label class="pair"><span>Img w</span><input id="lImageW" type="number" min="0" placeholder="1200"></label>
+              <label class="pair"><span>Img h</span><input id="lImageH" type="number" min="0" placeholder="630"></label>
+            </div>
+            <label class="pair"><span>Image</span><input id="lImageFile" type="file" accept="image/png,image/jpeg,image/webp"></label>
+            <button class="btn ghost xs" id="lReset" type="button">reset to resolved</button>
+          </div>
+        </section>
+
+
+        <section class="group" data-group="quote">
+          <label class="toggle"><input type="checkbox" id="qOn"><span>Quote</span></label>
+          <div class="fields" data-fields>
+            <label class="pair"><span>Text</span><textarea id="qText" rows="2" spellcheck="false"></textarea></label>
+            <label class="pair"><span>Name</span><input id="qName" placeholder="Name"></label>
+            <label class="pair"><span>Handle</span><input id="qHandle" placeholder="handle" spellcheck="false"></label>
+            <label class="pair"><span>Verified</span>
+              <select id="qVerified">
+                <option value="none">none</option>
+                <option value="blue">blue</option>
+                <option value="business">business</option>
+                <option value="government">government</option>
+              </select>
+            </label>
+            <button class="btn ghost xs" id="qReset" type="button">reset to resolved</button>
+          </div>
+        </section>
+
+
+        <section class="group" data-group="poll">
+          <label class="toggle"><input type="checkbox" id="pOn"><span>Poll</span></label>
+          <div class="fields" data-fields>
+            <label class="pair"><span>Choices<br><em class="tiny faint">one per line</em></span><textarea id="pChoices" rows="3" spellcheck="false"></textarea></label>
+            <label class="pair"><span>Votes</span><input id="pVotes" placeholder="10, 20, 30" spellcheck="false"></label>
+            <label class="pair"><span>Seconds left</span><input id="pLeft" type="number" min="0" placeholder="omitted = Final results"></label>
+          </div>
+        </section>
+
+
+        <section class="group" data-group="advanced">
+          <label class="toggle"><input type="checkbox" id="xOn"><span>Advanced</span></label>
+          <div class="fields" data-fields>
+            <label class="pair"><span>Card state</span>
+              <select id="xCardState"><option value="auto">auto</option><option value="dismissed">dismissed</option></select>
+            </label>
+            <label class="pair"><span>Social</span>
+              <select id="xSocial"><option value="">none</option><option value="pinned">pinned</option></select>
+            </label>
+            <label class="pair"><span>Long post</span>
+              <select id="xLongPost"><option value="">auto</option><option value="true">true</option><option value="false">false</option></select>
+            </label>
+            <label class="pair"><span>Reply to id</span><input id="xReplyTo" placeholder="status id" spellcheck="false"></label>
+            <label class="pair"><span>Reply handle</span><input id="xReplyHandle" placeholder="handle" spellcheck="false"></label>
+            <label class="pair"><span>Media tags</span><input id="xMediaTags" placeholder="Name, Other" spellcheck="false"></label>
+            <label class="pair"><span>App version</span><input id="xAppVersion" placeholder="data-app-version" spellcheck="false"></label>
+          </div>
+        </section>
+    </div>
+  </dialog>
+
+  <div class="toast" id="toast" hidden></div>
+</div>
+<script type="module" src="/app.js"></script>
+</body>
+</html>

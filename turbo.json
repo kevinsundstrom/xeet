@@ -1,0 +1,37 @@
+{
+  "$schema": "https://turborepo.com/schema.json",
+  "globalDependencies": ["Cargo.toml", "Cargo.lock", "pnpm-lock.yaml", "tools/ship/vercel-build.mjs"],
+  "tasks": {
+    "//#ci:gates": {
+      "inputs": [
+        "crates/**",
+        "packages/xeet/src/**",
+        "tools/ship/check-contract.mjs",
+        "tools/ship/check-unsafe.mjs",
+        "tools/ship/golden-stamp.mjs",
+        "tests/golden/**",
+        "tools/oracle/**",
+        "tools/playground/**"
+      ],
+      "outputs": []
+    },
+    "//#ci:rust-test": {
+      "inputs": ["crates/**", "assets/**", "tests/**"],
+      "outputs": []
+    },
+    "//#ci:wasm": {
+      "inputs": ["crates/**", "assets/**", "tools/ship/build-wasm.mjs"],
+      "outputs": ["packages/xeet/wasm/**"]
+    },
+    "//#ci:pkg-test": {
+      "dependsOn": ["//#ci:wasm"],
+      "inputs": ["packages/xeet/src/**", "packages/xeet/test/**", "packages/xeet/package.json"],
+      "outputs": []
+    },
+    "//#ci:site": {
+      "dependsOn": ["//#ci:gates", "//#ci:rust-test", "//#ci:wasm", "//#ci:pkg-test"],
+      "inputs": ["app/**", "next.config.mjs", "README.md"],
+      "outputs": [".next/**", "!.next/cache/**", "public/wasm/**"]
+    }
+  }
+}

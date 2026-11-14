@@ -1,0 +1,44 @@
+{
+  "name": "@xeet/core",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Render X post previews without a browser: PNG and an explanation of every decision.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vercel-labs/xeet",
+    "directory": "packages/xeet"
+  },
+  "homepage": "https://xeet.vercel.dev",
+  "bugs": {
+    "url": "https://github.com/vercel-labs/xeet/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "types": "./src/index.d.ts",
+  "exports": {
+    ".": { "types": "./src/index.d.ts", "default": "./src/index.js" },
+    "./node": { "types": "./src/node.d.ts", "default": "./src/node.js" },
+    "./abi": "./src/abi.js",
+    "./resolve": { "types": "./src/resolve.d.ts", "default": "./src/resolve.js" },
+    "./schemas": "./src/schemas.js",
+    "./limits": "./src/limits.js",
+    "./mcp": "./src/mcp.js"
+  },
+  "files": [
+    "src",
+    "wasm/package.json",
+    "wasm/xeet_wasm.js",
+    "wasm/xeet_wasm_bg.wasm",
+    "wasm/fonts",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "node ../../tools/ship/build-wasm.mjs",
+    "test": "node --test test/xeet.test.js test/fonts.test.js"
+  }
+}

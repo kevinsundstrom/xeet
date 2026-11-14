@@ -1,0 +1,316 @@
+# Pipeline 1 (PLAN.md §11): every pull request, hermetic, a few minutes.
+#
+# No network at test time. The vendored X assets and the goldens come from a
+# private store through `tools/ship/fetch-vendor.mjs`, gated on repository
+# secrets (see docs/CI.md). Nothing here deploys anything.
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: -D warnings
+  # One target dir for the whole job; the cargo cache keys on it.
+  CARGO_TARGET_DIR: target/ci
+
+jobs:
+  # Fast, no Rust: the published contract must match the code, and no golden
+  # may exist without an oracle stamp. Seconds, so it gates everything else.
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Model, schema, limits and MCP tools agree
+        run: node tools/ship/check-contract.mjs
+      - name: "PLAN §13: the cores forbid unsafe"
+        run: node tools/ship/check-unsafe.mjs
+      - name: Every golden carries a matching oracle stamp
+        run: node tools/ship/golden-stamp.mjs --check
+
+  # Linting needs no Rust build and no X assets: the workflows themselves and the
+  # JavaScript. Rust formatting is checked in the `rust` job (it is a property of
+  # the workspace, and that job is where the toolchain and the sources meet).
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Install actionlint
+        run: |
+          # Pinned: the script takes the release tag as its first argument, so an
+          # upstream change to its default cannot turn the lint gate red on its own.
+          curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash | bash -s -- 1.7.12
+          echo "$PWD" >> "$GITHUB_PATH"
+      - name: Every workflow parses and is valid
+        run: actionlint -color
+      - name: Every JavaScript file parses
+        run: |
+          git ls-files '*.mjs' '*.js' | while read -r f; do node --check "$f" || exit 1; done
+          echo "$(git ls-files '*.mjs' '*.js' | wc -l) file(s) parsed"
+
+  # The text engine is a standalone crate with its own vendored conformance
+  # suite: no X assets, so it runs on every push regardless of secrets.
+  text:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with: { workspaces: ". -> target/ci" }
+      - name: "twitter-text conformance (PLAN.md §4: 100%)"
+        run: cargo test -p xeet-text --test conformance -- --nocapture
+      - name: Text engine unit tests
+        run: cargo test -p xeet-text --lib
+
+  # Everything below builds `xeet-core`, whose build.rs embeds X's vendored
+  # fonts, icons, tokens and default avatar. Those live in a private store and
+  # are restored from repository secrets; without them the job cannot build at
+  # all, so it is skipped rather than failed (see docs/CI.md, "What the secrets
+  # enable"). `secrets` is not available in a job-level `if`, so the check runs in
+  # a step and is passed on as an output.
+  vendor:
+    runs-on: ubuntu-latest
+    outputs:
+      available: ${{ steps.check.outputs.available }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: check
+        env:
+          URL: ${{ secrets.XEET_VENDOR_URL }}
+          TOKEN: ${{ secrets.XEET_VENDOR_TOKEN }}
+        run: |
+          if [ -f "assets/vendor/fonts/manifest.json" ] || { [ -n "$URL" ] && [ -n "$TOKEN" ]; }; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+            echo "Vendor runtime assets are available: the Rust, WASM, determinism and bench jobs will run."
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            message="X's assets are not configured (\`XEET_VENDOR_URL\` and \`XEET_VENDOR_TOKEN\` are unset), so every job that builds \`xeet-core\` is skipped: rust, wasm, determinism, determinism-compare, bench. The contract, lint, text and audit jobs run regardless. See docs/CI.md for what the secrets enable."
+            echo "::notice title=Upstream assets not configured::$message"
+            {
+              echo "### Upstream assets not configured — Rust jobs skipped"
+              echo ""
+              echo "$message"
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  rust:
+    needs: [contract, vendor]
+    if: needs.vendor.outputs.available == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+        with: { workspaces: ". -> target/ci" }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Restore the vendored X assets
+        env:
+          XEET_VENDOR_URL: ${{ secrets.XEET_VENDOR_URL }}
+          XEET_VENDOR_TOKEN: ${{ secrets.XEET_VENDOR_TOKEN }}
+        run: node tools/ship/fetch-vendor.mjs
+      # No `version:` here: the action reads `packageManager` from the root
+      # package.json, which is the only place the pnpm version is declared.
+      - uses: pnpm/action-setup@v4
+      - name: Install the oracle tooling
+        run: cd tools && pnpm install
+      - name: Formatting
+        # A property of the workspace, and rustfmt is installed above.
+        run: cargo fmt --all -- --check
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings -A clippy::too_many_arguments -A clippy::field_reassign_with_default -A clippy::neg_cmp_op_on_partial_ord -A clippy::self_named_constructors -A clippy::manual_noop_waker -A clippy::while_let_loop -A clippy::unnecessary_get_then_check
+      - name: Unit tests
+        run: cargo test --workspace
+      - name: twitter-text conformance
+        # The official suite, in the text engine's crate. PLAN.md §4: 100%.
+        if: hashFiles('crates/xeet-text/Cargo.toml') != ''
+        run: cargo test -p xeet-text --test conformance -- --nocapture
+      - name: Rules matrix
+        # The 35 rows of PLAN.md §9 with their evidence. PLAN.md §4: 100%.
+        run: "cargo test -p xeet-core --lib rules:: -- --nocapture"
+      - name: Rules canary, passive (no account, no posting)
+        # PLAN.md §11 pipeline 4's passive half: re-assert the derived rules on
+        # a fresh sample of public posts. The active half runs weekly in
+        # behavior-canary.yml with the test account.
+        if: hashFiles('tools/rules/canary.mjs') != '' && hashFiles('assets/vendor/corpus/*.html') != ''
+        run: node tools/rules/canary.mjs --offline
+      - name: Layout parity against stored Chrome geometry
+        # No Chrome, no network: xeet against the goldens an oracle run produced.
+        run: |
+          cargo build --release --bin xeet
+          XEET_BIN="$CARGO_TARGET_DIR/release/xeet" node tools/ship/parity-check.mjs
+      - name: End-to-end acceptance against the captured x.com pages
+        # PLAN.md §10 layer 2. Needs Chrome (ubuntu-latest ships it) and the
+        # vendored corpus, and compares heights, line breaks and pixels on every
+        # post it can convert. Records the trend into tests/golden/e2e.json when
+        # run with --json.
+        if: hashFiles('assets/vendor/corpus/*.html') != ''
+        env:
+          CARGO_TARGET_DIR: target/ci
+        run: |
+          cargo build --release --bin xeet --bin xeet-render --example ship_pixel_diff
+          node tools/ship/e2e.mjs --json tmp/e2e-full.json || echo "::warning::e2e is a trend gate: see docs/E2E.md for the buckets"
+          # The run above is allowed to fail, in which case there is no summary to
+          # print; guard the read so the step reports the e2e failure, not a
+          # MODULE_NOT_FOUND from this line.
+          if [ -f tmp/e2e-full.json ]; then
+            node -e 'const r=require("./tmp/e2e-full.json"); console.log(JSON.stringify(r.summary))' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "e2e produced no tmp/e2e-full.json; nothing to summarize" >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Raster goldens, perceptual threshold
+        run: cargo run --release --example ship_raster_check
+      - name: "Frame gate: replica fixtures and the frame parity example"
+        # docs/FRAME.md. Needs Chrome: `replica.mjs` renders X's real markup with
+        # our data and dumps every box; `frame_parity` compares our frame to it.
+        if: hashFiles('tools/oracle/replica-fixtures.mjs') != '' && hashFiles('assets/vendor/corpus/*.html') != ''
+        run: |
+          node tools/oracle/replica-fixtures.mjs
+          node tools/oracle/replica.mjs
+          cargo run --release --example frame_parity
+      - name: "Paint gate: the §4 raster oracle"
+        # `tools/oracle/raster-all.mjs` is the definition of the Raster level
+        # (PLAN.md §4). Run on Linux, where Chrome is reproducible; macOS dilates
+        # glyphs through CoreText and lands near 98%, which is a platform
+        # property, not a rendering difference.
+        if: hashFiles('tools/oracle/raster-all.mjs') != '' && hashFiles('assets/vendor/upstream/styles.css') != ''
+        run: cd tools && node oracle/raster-all.mjs --dpr 2
+
+  wasm:
+    # The module the Node package and the HTTP function run. Tested natively
+    # (the ABI is exercised without a wasm runtime) and built for wasm32.
+    needs: [contract, vendor]
+    if: needs.vendor.outputs.available == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with: { targets: wasm32-unknown-unknown }
+      - uses: Swatinem/rust-cache@v2
+        with: { workspaces: ". -> target/ci" }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Restore the vendored X assets
+        env:
+          XEET_VENDOR_URL: ${{ secrets.XEET_VENDOR_URL }}
+          XEET_VENDOR_TOKEN: ${{ secrets.XEET_VENDOR_TOKEN }}
+        run: node tools/ship/fetch-vendor.mjs
+      - name: Install wasm-bindgen (must match the crate pin)
+        uses: taiki-e/install-action@v2
+        with: { tool: wasm-bindgen@0.2.130 }
+      - name: ABI tests, natively
+        run: cargo test -p xeet-wasm
+      - name: Build the module
+        run: node tools/ship/build-wasm.mjs
+      - name: Node package tests
+        env: { XEET_REQUIRE_WASM: "1" }
+        run: node --test packages/xeet/test/xeet.test.js packages/xeet/test/fonts.test.js
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xeet-wasm
+          path: packages/xeet/wasm/xeet_wasm_bg.wasm
+          retention-days: 7
+
+  determinism:
+    # Same input, same bytes, on every platform and in WASM (PLAN.md §11).
+    # Each OS compares its native binary against its own wasm build and uploads
+    # the hashes; `determinism-compare` then checks them across OSes.
+    needs: [contract, vendor]
+    if: needs.vendor.outputs.available == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with: { targets: wasm32-unknown-unknown }
+      - uses: Swatinem/rust-cache@v2
+        with: { workspaces: ". -> target/ci" }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Restore the vendored X assets
+        env:
+          XEET_VENDOR_URL: ${{ secrets.XEET_VENDOR_URL }}
+          XEET_VENDOR_TOKEN: ${{ secrets.XEET_VENDOR_TOKEN }}
+        run: node tools/ship/fetch-vendor.mjs
+      - name: Install wasm-bindgen (must match the crate pin)
+        uses: taiki-e/install-action@v2
+        with: { tool: wasm-bindgen@0.2.130 }
+      - name: Native and WASM must produce identical bytes
+        run: node tools/ship/determinism.mjs --out determinism-${{ matrix.os }}.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: determinism-${{ matrix.os }}
+          path: determinism-${{ matrix.os }}.json
+          retention-days: 7
+
+  determinism-compare:
+    # Only meaningful when the matrix actually ran.
+    needs: determinism
+    if: needs.determinism.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: determinism-*
+          merge-multiple: true
+      - name: Every platform agrees, byte for byte
+        run: node tools/ship/determinism-compare.mjs
+
+
+  bench:
+    needs: [contract, vendor]
+    if: needs.vendor.outputs.available == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with: { workspaces: ". -> target/ci" }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Restore the vendored X assets
+        env:
+          XEET_VENDOR_URL: ${{ secrets.XEET_VENDOR_URL }}
+          XEET_VENDOR_TOKEN: ${{ secrets.XEET_VENDOR_TOKEN }}
+        run: node tools/ship/fetch-vendor.mjs
+      - name: Budgets from PLAN.md §12, and the binary-size budget
+        env:
+          XEET_BENCH_MACHINE: github-ubuntu-latest
+          CARGO_TARGET_DIR: target/ci
+        run: node tools/ship/bench.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bench
+          path: bench-baseline.json
+          if-no-files-found: ignore
+
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      # Prebuilt, so the job is seconds rather than a five-minute `cargo install`.
+      - uses: taiki-e/install-action@v2
+        with: { tool: cargo-audit }
+      - name: cargo-audit
+        run: cargo audit --deny warnings

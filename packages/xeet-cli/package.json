@@ -1,0 +1,35 @@
+{
+  "name": "@xeet/cli",
+  "version": "0.1.0",
+  "description": "Render X posts to PNG from the command line. No browser, no system fonts required.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vercel-labs/xeet",
+    "directory": "packages/xeet-cli"
+  },
+  "homepage": "https://xeet.vercel.dev",
+  "bugs": {
+    "url": "https://github.com/vercel-labs/xeet/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "bin": {
+    "xeet": "bin/xeet.js"
+  },
+  "files": [
+    "bin",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "optionalDependencies": {
+    "@xeet/cli-darwin-arm64": "0.1.0",
+    "@xeet/cli-darwin-x64": "0.1.0",
+    "@xeet/cli-linux-arm64": "0.1.0",
+    "@xeet/cli-linux-x64": "0.1.0",
+    "@xeet/cli-win32-x64": "0.1.0"
+  }
+}

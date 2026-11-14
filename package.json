@@ -1,0 +1,42 @@
+{
+  "name": "xeet-workspace",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Low-level Rust and WebAssembly library for rendering X post previews without a browser.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vercel-labs/xeet"
+  },
+  "homepage": "https://xeet.vercel.dev",
+  "engines": {
+    "node": ">=22"
+  },
+  "packageManager": "pnpm@12.18.0",
+  "scripts": {
+    "dev": "node tools/ship/vercel-build.mjs --only stage-wasm && next dev",
+    "start": "next start",
+    "build": "turbo run //#ci:site",
+    "build:fast": "node tools/ship/vercel-build.mjs --skip-tests",
+    "ci:gates": "node tools/ship/vercel-build.mjs --only gates",
+    "ci:rust-test": "node tools/ship/vercel-build.mjs --only rust-test",
+    "ci:wasm": "node tools/ship/vercel-build.mjs --only wasm",
+    "ci:pkg-test": "node tools/ship/vercel-build.mjs --only pkg-test",
+    "ci:site": "node tools/ship/vercel-build.mjs --only site",
+    "test": "node tools/ship/check-contract.mjs && node tools/ship/check-unsafe.mjs && node tools/ship/golden-stamp.mjs --check && XEET_REQUIRE_WASM=1 node --test packages/xeet/test/xeet.test.js packages/xeet/test/fonts.test.js",
+    "canary": "node tools/ship/upstream-canary.mjs",
+    "playground": "node tools/playground/server.mjs"
+  },
+  "dependencies": {
+    "@vercel/functions": "3.11.1",
+    "@xeet/core": "workspace:*",
+    "botid": "^1.5.13",
+    "next": "^16.4.6",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "turbo": "^2.11.11"
+  }
+}

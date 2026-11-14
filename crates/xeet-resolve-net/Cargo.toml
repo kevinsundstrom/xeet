@@ -1,0 +1,26 @@
+[package]
+name = "xeet-resolve-net"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "The default Fetch and Lookup for xeet-resolve on native: ureq and the system resolver."
+
+[dependencies]
+xeet-resolve = { path = "../xeet-resolve" }
+serde_json = "1"
+
+# `ureq` is the choice here, and the reasons are the constraints:
+#   - it is *blocking*, so it needs no runtime. `resolve`'s futures never yield
+#     against this host (each `fetch` does its I/O and returns a ready future),
+#     so a CLI (or a blocking HTTP handler) drives the whole resolution on the
+#     calling thread — no tokio, no executor, no thread pool to shut down.
+#   - rustls with bundled webpki roots, so there is no OpenSSL and no system
+#     trust store to get wrong in a container.
+#   - small: it compiles in a few seconds, which matters because the CLI build
+#     is on the keystroke-adjacent path of the playground's `--stdio` server.
+# `reqwest` would drag in tokio and hyper (~200 crates) for one GET; `attohttpc`
+# and `minreq` are smaller but have no redirect-free response with headers this
+# precise. None of this is a dependency of `xeet-resolve` itself, so a wasm
+# build never sees it.
+ureq = { version = "2.12", default-features = false, features = ["tls"] }

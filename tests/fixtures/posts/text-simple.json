@@ -1,0 +1,12 @@
+{
+  "text": "We just shipped the thing.\n\nRead more: https://vercel.com/blog/the-thing",
+  "author": { "name": "Vercel", "handle": "vercel", "verified": "business" },
+  "links": {
+    "https://vercel.com/blog/the-thing": {
+      "card": "summary_large_image",
+      "title": "The thing, shipped",
+      "description": "What we built, why it matters, and what comes next.",
+      "image": { "width": 1200, "height": 630 }
+    }
+  }
+}

@@ -1,0 +1,25 @@
+# xeet
+
+> Renders X (Twitter) posts to PNG without a browser: X's own layout, fonts, emoji and line-breaking rules rebuilt in Rust, compiled to WebAssembly, and checked pixel for pixel against Chrome rendering X's real stylesheet. A low-level library for TypeScript/JavaScript (`@xeet/core`), Rust (`xeet-core`) and the command line (`@xeet/cli`). Licensed under Apache-2.0. There is no hosted rendering API.
+
+Rendering is a pure function from a post (JSON) and options (surface, width, theme, dpr, fontScale, expanded) to PNG bytes plus a JSON report of what was drawn. It never touches the network. Turning an x.com link into a post (following t.co redirects, reading link cards, downloading images) is a separate step, `resolve`, that runs through a `fetch` the caller injects.
+
+## Docs
+
+- [Full documentation](/index.md): features, the JavaScript, Rust and CLI APIs, how it imitates Chrome, edge cases, how the tests work
+- [Full documentation as one text file](/llms-full.txt): the same content, for tools that want a single file
+
+## API at a glance
+
+- `loadXeet()` from `@xeet/core/node`: loads the WebAssembly module in Node; returns `render`, `renderPng`, `renderMany`, `explain`, `hasShowMore`, `sheet`, `resolve`, `resolveLinks`
+- `bind(wasm)` from `@xeet/core`: the same API over the browser build (`init()` the module first)
+- `render(post, options)` → `{ png, report }`; `explain(post, options)` → the report alone, no pixels
+- `hasShowMore(post, options)` → `boolean` (whether the post cuts with "Show more"); pass `{ expanded: true }` to render with "Show more" toggled on
+- `resolve(input, options, host)`: text, an x.com status URL or post JSON → a complete post; `host` comes from `whatwgHost({ fetch, cache })`
+- Options: `surface` (`web-timeline` | `web-detail` | `ios-timeline` | `ios-detail`), `width` (100–1200 CSS px, e.g. `382` `@3x` with `ios-timeline` for iPhone Duo), `theme` (`light` | `dark`), `dpr` (1–4), `fontScale`, `expanded`
+- Errors are `XeetError` with `code`, `status` and the list of problem fields
+- Rust: `xeet_core::render(&post, &options)`; CLI (`npm i -g @xeet/cli`): `xeet render post.json -o post.png`, `xeet resolve <url> --media | xeet render -`
+
+## Optional
+
+- [Live demo](https://xeet.vercel.dev): hard posts rendered in the browser, four layouts each, with the exact `render()` input behind them under "view code"

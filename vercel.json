@@ -1,0 +1,7 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "fluid": true,
+  "framework": "nextjs",
+  "outputDirectory": ".next",
+  "buildCommand": "turbo run //#ci:site"
+}

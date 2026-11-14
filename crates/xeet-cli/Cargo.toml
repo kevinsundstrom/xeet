@@ -1,0 +1,32 @@
+[package]
+name = "xeet-cli"
+description = "Render X posts to PNG from the command line without a browser."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "xeet"
+path = "src/main.rs"
+
+[dependencies]
+xeet-core = { path = "../xeet-core" }
+xeet-text = { path = "../xeet-text" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# `xeet resolve`. The CLI is native-only (the wasm build is `xeet-wasm`), so the
+# default native host is a plain dependency rather than a feature: `resolve`
+# without a network stack would just be `explain`.
+xeet-resolve = { path = "../xeet-resolve" }
+xeet-resolve-net = { path = "../xeet-resolve-net" }
+
+# Dedicated render/explain/sheet/serve binary (`xeet-render serve --stdio`
+# speaks the JSON render protocol, while `xeet serve --stdio` serves text
+# layout queries for the oracle suite).
+[[bin]]
+name = "xeet-render"
+path = "src/bin/xeet-render.rs"

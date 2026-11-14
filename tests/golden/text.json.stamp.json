@@ -1,0 +1,18 @@
+{
+  "golden": "text.json",
+  "sha256": "cee0b2baecbe39bb4a6de78fcf70ae7202c60b391e3af7ac4b53f93ed0162b1b",
+  "cases": 210,
+  "generatedAt": "2026-11-10T22:40:34.675Z",
+  "oracle": {
+    "script": "tools/oracle/text-parity.mjs",
+    "harnessSha256": "1278916e3c582b716f14b577456087cdb086c388d69c320e6c7cc9c8de142b98",
+    "chrome": "141.0.7390.37",
+    "chromiumBuild": "1194",
+    "playwright": "1.56.1"
+  },
+  "upstream": {
+    "appVersion": "89824c04747e706b687e3af193963c4d00251b8e",
+    "stylesheetSha256": "10898d069456c3d288cd6b2f8af34a02a9077cb393df4d6bd2ab5b264dbc302d"
+  },
+  "host": "darwin-arm64"
+}

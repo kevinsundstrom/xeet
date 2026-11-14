@@ -1,0 +1,19 @@
+[package]
+name = "xeet-resolve"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "Turn post text or an X post URL into a complete model::Post: link cards, media, avatars, badges, quotes — with network I/O injected by the caller."
+
+[dependencies]
+xeet-core = { path = "../xeet-core" }
+xeet-text = { path = "../xeet-text" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# No HTTP client, no async runtime, no TLS, no `url` crate: the caller injects a
+# `Fetch`, so this builds for native and for wasm32 alike, and a browser can use
+# its own fetch (see docs/RESOLVE.md). The native default lives in
+# `xeet-resolve-net`, behind a feature of the CLI, so nothing here needs a
+# network stack at build time.

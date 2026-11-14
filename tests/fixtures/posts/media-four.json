@@ -1,0 +1,10 @@
+{
+  "text": "Four images, no bytes: the placeholder path.",
+  "author": { "name": "Vercel", "handle": "vercel" },
+  "media": [
+    { "kind": "image", "width": 1600, "height": 900, "alt": "A dashboard" },
+    { "kind": "image", "width": 900, "height": 1600 },
+    { "kind": "image", "width": 1200, "height": 1200 },
+    { "kind": "image", "width": 4000, "height": 3000 }
+  ]
+}

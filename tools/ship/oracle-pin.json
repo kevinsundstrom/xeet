@@ -1,0 +1,7 @@
+{
+  "$comment": "The browser the goldens were produced with. That is Playwright's bundled Chromium (tools/oracle/browser.mjs launches it, not the system Chrome), so the pin names it. Bumped only by the oracle-bump job (PLAN.md §11 pipeline 5), which re-captures the corpus and compares old against new.",
+  "chrome": "141.0.7390.37",
+  "chromiumBuild": "1194",
+  "playwright": "1.56.1",
+  "systemChromeForManualChecks": "157.0.8103.39"
+}
