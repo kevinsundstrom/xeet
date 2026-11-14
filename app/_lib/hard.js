@@ -436,7 +436,7 @@ I told Fable 5.2 to make the video of it's dreams, and 9 hours later:`,
     id: "twenty-strip-panorama",
     url: "https://x.com/ciguleva/status/2121073443533881486",
     title: "20-strip panoramic carousel",
-    why: "Twenty 102×2048 vertical slices spaced 4 px apart, with 20 indicator pills and the affiliate badge.",
+    why: "Twenty 102×2048 vertical slices spaced 4 px apart, with a 7-slot windowed indicator bar and the affiliate badge.",
     assets: {
       affiliateBadge: "./avatars/restream-badge.jpg",
       media: [

@@ -597,6 +597,57 @@ fn single(cx: &Ctx, item: &MediaItem, y0: f32, out: &mut Vec<Item>) -> f32 {
     rect.h
 }
 
+/// Carousel page indicator (`Pcxk6Kf2.js`, `Wg` + `Gg`): at most 7 visible
+/// slots (`t_ = 7`), active pill `22 × 4` at opacity `1.0`, inactive pills
+/// `12 × 4` at opacity `0.35`, base spacing `5` px, with edge slots at the
+/// window boundary scaled by `0.5` (`6 × 4` pill) and slots outside the window
+/// collapsed to `0` px.
+const IND_ACTIVE_W: f64 = 22.0;
+const IND_INACTIVE_W: f64 = 12.0;
+const IND_SPACING: f64 = 5.0;
+const IND_INACTIVE_ALPHA: f64 = 0.35;
+const IND_WINDOW: usize = 7;
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct IndicatorBar {
+    x: f32,
+    width: f32,
+    opacity: f32,
+}
+
+/// Port of `Wg` + `Gg` (`Pcxk6Kf2.js`): lays out the `count` indicator bars
+/// for scroll `position` in `0.0..=(count - 1)`.
+fn layout_indicator_bars(position: f64, count: usize) -> (Vec<IndicatorBar>, f32) {
+    let max_pos = count.saturating_sub(1) as f64;
+    let pos = position.clamp(0.0, max_pos);
+    let max_start = count.saturating_sub(IND_WINDOW) as f64;
+    let start = (pos - (IND_WINDOW / 2) as f64).clamp(0.0, max_start);
+    let left_fade = start.min(1.0);
+    let right_fade = (max_start - start).min(1.0);
+
+    let mut bars = Vec::with_capacity(count);
+    let mut x = 0.0_f64;
+    for i in 0..count {
+        let idx = i as f64;
+        let active = 1.0 - (pos - idx).abs().min(1.0);
+        let rel = idx - start;
+        let rel_end = (IND_WINDOW.saturating_sub(1) as f64) - rel;
+        let left_scale = 1.0 - left_fade * (1.0 - ((rel + 1.0) * 0.5).clamp(0.0, 1.0));
+        let right_scale = 1.0 - right_fade * (1.0 - ((rel_end + 1.0) * 0.5).clamp(0.0, 1.0));
+        let scale = left_scale.min(right_scale);
+        let width = (IND_INACTIVE_W + (IND_ACTIVE_W - IND_INACTIVE_W) * active) * scale;
+        let spacing = IND_SPACING * scale;
+        let opacity = IND_INACTIVE_ALPHA + (1.0 - IND_INACTIVE_ALPHA) * active;
+        bars.push(IndicatorBar {
+            x: x as f32,
+            width: width as f32,
+            opacity: opacity as f32,
+        });
+        x += width + spacing;
+    }
+    (bars, x as f32)
+}
+
 fn carousel(
     cx: &Ctx,
     items: &[MediaItem],
@@ -616,38 +667,40 @@ fn carousel(
     // to the right edge of the post.
     let clip_w = cx.width + if l.overflows { cx.overhang_end } else { 0.0 };
 
-    // `DIdg36-I.js` (`JC` + `VC`): when `withPageIndicator && layout.overflowsWidth
-    // && variant === "timeline"` (`!compact`, i.e. a main post with empty body),
-    // X renders `<div class="-mt-2 mb-3 flex h-1 items-center gap-[5px] self-start">`
-    // above the slides: first pill `w-[22px] h-1 rounded-full bg-(--x-fg-secondary)`
-    // at opacity 1.0, remaining `n - 1` pills `w-3 h-1` at opacity 0.35.
+    // `Pcxk6Kf2.js` (`qg` + `Wg` + `Gg`): when `withPageIndicator &&
+    // layout.overflowsWidth && variant === "timeline"` (`!compact`, i.e. a main
+    // post with empty body), X renders `<div class="pointer-events-none relative
+    // -mt-2 mb-3 h-1 self-start">` above the slides using a 7-slot window:
+    // for `count <= 7`, all pills render full width (`22px` active at opacity
+    // `1.0`, `12px` inactive at opacity `0.35`, `5px` spacing); for `count > 7`
+    // at slide 0, slot 6 scales by `0.5` (`6px` wide at `x = 112px`, total
+    // container width `120.5px`) and slots `7..count` collapse to `0px`.
     let show_indicator = with_page_indicator && l.overflows && !compact;
     let slide_y = if show_indicator {
         let ind_y = y0 - 8.0;
-        let active = cx.p.secondary;
-        let muted = crate::color::Rgba {
-            a: ((f32::from(active.a) * 0.35).round()) as u8,
-            ..active
-        };
+        let base = cx.p.secondary;
+        let (bars, ind_w) = layout_indicator_bars(0.0, items.len());
         out.push(Item::PushClip {
-            shape: shape(Rect::new(0.0, ind_y, clip_w, 4.0), 0.0, CornerShape::Round),
+            shape: shape(
+                Rect::new(0.0, ind_y, ind_w.min(clip_w), 4.0),
+                0.0,
+                CornerShape::Round,
+            ),
         });
-        let mut px = 0.0_f32;
-        for idx in 0..items.len() {
-            if px >= clip_w {
-                break;
+        for bar in bars {
+            if bar.width <= 0.0 || bar.x >= clip_w {
+                continue;
             }
-            let (pw, color) = if idx == 0 {
-                (22.0, active)
-            } else {
-                (12.0, muted)
+            let color = crate::color::Rgba {
+                a: ((f32::from(base.a) * bar.opacity).round()) as u8,
+                ..base
             };
+            let r = bar.width.min(4.0) * 0.5;
             fill(
                 out,
-                shape(Rect::new(px, ind_y, pw, 4.0), 2.0, CornerShape::Round),
+                shape(Rect::new(bar.x, ind_y, bar.width, 4.0), r, CornerShape::Round),
                 color,
             );
-            px += pw + 5.0;
         }
         out.push(Item::PopClip);
         y0 + 8.0
@@ -1217,7 +1270,9 @@ mod attribution {
             with_ind.height,
             without_ind.height
         );
-        // Active 22×4 pill at x=0, y=-8, followed by 12×4 muted pills spaced 5 px apart.
+        // 20-image carousel uses X's 7-slot window: active 22×4 pill at x=0,
+        // five 12×4 muted pills at x=27..95, one half-scaled 6×4 trailing pill at x=112,
+        // and slots 7..20 collapsed to 0 px (total indicator width 120.5 px).
         let pills: Vec<_> = with_ind
             .items
             .iter()
@@ -1226,13 +1281,35 @@ mod attribution {
                 _ => None,
             })
             .collect();
-        assert!(
-            pills.len() > 10,
-            "expected >10 visible indicator pills, got {}",
-            pills.len()
+        assert_eq!(
+            pills.len(),
+            7,
+            "20-image carousel renders only the 7-slot indicator window"
         );
         assert_eq!((pills[0].x, pills[0].y, pills[0].w), (0.0, -8.0, 22.0));
         assert_eq!((pills[1].x, pills[1].y, pills[1].w), (27.0, -8.0, 12.0));
+        assert_eq!((pills[5].x, pills[5].y, pills[5].w), (95.0, -8.0, 12.0));
+        assert_eq!((pills[6].x, pills[6].y, pills[6].w), (112.0, -8.0, 6.0));
+
+        let (bars_20, total_20) = layout_indicator_bars(0.0, 20);
+        assert_eq!(total_20, 120.5);
+        assert!(bars_20[7..].iter().all(|b| b.width == 0.0));
+
+        // Up to 7 items: all 7 slots render full width (no half-scaled trailing pill).
+        let (bars_7, total_7) = layout_indicator_bars(0.0, 7);
+        assert_eq!(total_7, 129.0);
+        assert_eq!(bars_7[0].width, 22.0);
+        assert!(bars_7[1..7].iter().all(|b| b.width == 12.0));
+
+        // Mid-scroll and end-of-scroll windowing match `Wg` + `Gg` (`Pcxk6Kf2.js`).
+        let (bars_mid, _) = layout_indicator_bars(5.0, 20);
+        assert_eq!(bars_mid[2].width, 6.0, "leading edge of shifted window scales by 0.5");
+        assert_eq!(bars_mid[5].width, 22.0, "active slot 5 is 22 px");
+        assert_eq!(bars_mid[8].width, 6.0, "trailing edge of shifted window scales by 0.5");
+        let (bars_end, total_end) = layout_indicator_bars(19.0, 20);
+        assert_eq!(total_end, 120.5);
+        assert_eq!(bars_end[13].width, 6.0, "leading edge at end of carousel scales by 0.5");
+        assert_eq!(bars_end[19].width, 22.0, "last slot active at 22 px");
 
         // Non-overflowing 2-image 3:4 portrait carousel draws no indicator bar even with empty text.
         let two_portrait = Post {

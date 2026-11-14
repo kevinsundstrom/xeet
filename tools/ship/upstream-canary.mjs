@@ -7,15 +7,15 @@
 //
 //   1. Stylesheet & token invariants (`styles-*.css` on x.com): spacing,
 //      squircles (`--x-radius-m: 1.8`), radii, 16:9 video, Chirp `@font-face`,
-//      carousel indicator classes (`w-[22px]`, `gap-[5px]`, `-mt-2`, `mb-3`),
 //      and layout utility classes (`min-w-0`, `flex-1`, `line-clamp-1`,
 //      `wrap-break-word`). Also notes whether `appVersion` / stylesheet SHA
 //      rotated relative to `assets/upstream.lock.json`.
 //   2. Live SSR DOM & formula invariants across real public posts:
 //      - `mediaCarouselLayout` (`padding-bottom` formula on 2-image, 20-image,
 //        and 20-strip carousels matches `crates/xeet-core/src/cards/media.rs`),
-//      - timeline vs detail indicator rule (profile timeline renders `w-[22px]`
-//        pills on textless overflowing carousels; detail `/status/` omits them),
+//      - timeline vs detail indicator rule (profile timeline renders the 7-slot
+//        windowed `width:120.5px` / `round 9999px` pills on textless overflowing
+//        carousels; detail `/status/` omits them),
 //      - 510 px vertical media height cap (`max-width: 286.875px` on 9:16),
 //      - `note_tweet` / `Show more` and affiliate badge presence on live SSR.
 //   3. Live `xeet.resolve()` contract check (when `packages/xeet/wasm` is built)
@@ -212,6 +212,9 @@ if (probeHtml) {
         ["action-bar .min-w-0", /\.min-w-0\{[^}]*min-width:\s*0/],
         ["handle .wrap-break-word", /\.wrap-break-word\{[^}]*overflow-wrap:\s*break-word/],
         ["action-bar 18.75px icon size", /size-\\\[18\\\.75px\\\]/],
+        ["carousel indicator .bg-(--x-fg-secondary)", /bg-\\\(--x-fg-secondary\\\)/],
+        ["carousel indicator .-mt-2", /\.-mt-2\{/],
+        ["carousel indicator .mb-3", /\.mb-3\{/],
       ];
       for (const [label, re] of tokenChecks) {
         record(re.test(css), `CSS token: ${label}`);
@@ -233,13 +236,61 @@ const domProbes = [
         return `expected padding-bottom:${exp} in SSR HTML`;
       }
       // Detail `/status/` omits timeline-only indicator pills (`variant === "timeline"`).
-      if (html.includes("w-[22px]")) {
+      if (html.includes("w-[22px]") || html.includes("inset(0px 10px 0px 0px round 9999px)")) {
         return "unexpected timeline indicator bar on detail /status/ SSR";
       }
       // Payload inside SSR still carries all 20 media entities.
       const mediaHits = (html.match(/pbs\.twimg\.com\/media\//g) ?? []).length;
       if (mediaHits < 20) {
         return `expected >=20 media URLs in SSR HTML, found ${mediaHits}`;
+      }
+      return null;
+    },
+  },
+  {
+    name: "SSR timeline 7-slot carousel indicator window (justinbieber / ciguleva)",
+    url: "https://x.com/justinbieber",
+    async check(html) {
+      let sample = html;
+      if (!sample.includes("2120954896363200630")) {
+        const alt = await fetchText("https://x.com/ciguleva");
+        if (alt.includes("2121073443533881486")) sample = alt;
+        else {
+          // Both posts aged off page 1 of their timelines: verify the 7-slot
+          // indicator constants directly in the live `x-web` client bundle so
+          // this probe never degrades into a silent skip.
+          const entry = sample.match(/https:\/\/abs\.twimg\.com\/x-web\/x-web\/entry-client-logged-out-[A-Za-z0-9_-]+\.js/)?.[0];
+          if (!entry) return "missing entry-client-logged-out bundle URL on profile HTML";
+          const base = "https://abs.twimg.com/x-web/x-web/assets/";
+          const seen = new Set();
+          const queue = [entry];
+          while (queue.length && seen.size < 80) {
+            const url = queue.shift();
+            if (seen.has(url)) continue;
+            seen.add(url);
+            const js = await fetchText(url);
+            if (js.includes("round 9999px") && js.includes("withPageIndicator")) {
+              if (!/=12,/.test(js) || !/=22,/.test(js) || !/=5,/.test(js) || !/=\.35,/.test(js) || !/=7[},;]/.test(js)) {
+                return "carousel indicator constants (12/22/5/0.35/7) drifted in x-web bundle";
+              }
+              return null;
+            }
+            for (const m of js.matchAll(/["'`](?:\.\/)?(?:assets\/)?([A-Za-z0-9_-]{6,}\.js)["'`]/g)) {
+              const next = base + m[1];
+              if (!seen.has(next)) queue.push(next);
+            }
+          }
+          return "could not locate 7-slot carousel indicator module in live x-web bundle";
+        }
+      }
+      if (!sample.includes("width:120.5px")) {
+        return "expected 7-slot windowed indicator container width:120.5px on 20-item timeline carousel";
+      }
+      if (!sample.includes("inset(0px 16px 0px 0px round 9999px)")) {
+        return "expected half-scaled 6px 7th indicator slot (inset 16px of 22px) on 20-item timeline carousel";
+      }
+      if (!sample.includes("inset(0px 22px 0px 0px round 9999px)")) {
+        return "expected collapsed 0px slots 8..20 (inset 22px of 22px) on 20-item timeline carousel";
       }
       return null;
     },
@@ -270,8 +321,8 @@ const domProbes = [
       if (!html.includes(`padding-bottom:${exp}`) && !html.includes(`padding-bottom: ${exp}`)) {
         return `expected padding-bottom:${exp} in SSR HTML`;
       }
-      if (html.includes("w-[22px]")) {
-        return "unexpected w-[22px] indicator bar on non-overflowing 2-image carousel";
+      if (html.includes("w-[22px]") || html.includes("inset(0px 10px 0px 0px round 9999px)")) {
+        return "unexpected indicator bar on non-overflowing 2-image carousel";
       }
       return null;
     },
@@ -326,7 +377,7 @@ const domProbes = [
 for (const probe of domProbes) {
   try {
     const html = await fetchText(probe.url);
-    const problem = probe.check(html);
+    const problem = await probe.check(html);
     record(!problem, probe.name, problem ?? "");
   } catch (e) {
     record(false, probe.name, e.message);

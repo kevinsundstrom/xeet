@@ -90,7 +90,7 @@ Every image below is rendered directly by `xeet` from [`app/_lib/hard.js`](../ap
 </td>
 <td width="50%" valign="top">
 <picture><source media="(prefers-color-scheme: dark)" srcset="gallery/twenty-strip-panorama-dark.webp"><source media="(prefers-color-scheme: light)" srcset="gallery/twenty-strip-panorama-light.webp"><img src="gallery/twenty-strip-panorama-light.webp" alt="20-strip panoramic carousel"></picture>
-<br><b>20-strip panoramic carousel.</b> Twenty 102×2048 vertical slices spaced 4 px apart, with 20 indicator pills and the affiliate badge. <a href="https://x.com/ciguleva/status/2121073443533881486">Source</a>
+<br><b>20-strip panoramic carousel.</b> Twenty 102×2048 vertical slices spaced 4 px apart, with a 7-slot windowed indicator bar and the affiliate badge. <a href="https://x.com/ciguleva/status/2121073443533881486">Source</a>
 </td>
 </tr>
 <tr>

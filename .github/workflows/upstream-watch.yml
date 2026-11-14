@@ -3,10 +3,12 @@
 # Runs every 6 hours (and on manual dispatch) with zero private vendor secrets:
 #   1. Checks X's live stylesheet & design tokens (`styles-*.css` on x.com),
 #      including squircle scaling, 16:9 video, Chirp `@font-face`, carousel
-#      indicator classes (`w-[22px]`, `gap-[5px]`), and flex/wrap classes.
-#   2. Checks X's live SSR DOM & layout formulas across 6 real public X posts
-#      (20-image & 20-strip carousels, 2-image non-overflowing carousel, 9:16
-#      510 px vertical video cap, video + quote coexistence, `note_tweet` + quote).
+#      indicator classes (`bg-(--x-fg-secondary)`, `-mt-2`, `mb-3`), and
+#      flex/wrap classes.
+#   2. Checks X's live SSR DOM & layout formulas across real public X posts
+#      and profile timelines (20-image & 20-strip carousels, 7-slot windowed
+#      timeline indicator bar, 2-image non-overflowing carousel, 9:16 510 px
+#      vertical video cap, video + quote coexistence, `note_tweet` + quote).
 #
 # When any contract or layout invariant drifts, this workflow fails RED and
 # opens (or comments on) a single deduplicated GitHub Issue to alarm us.
