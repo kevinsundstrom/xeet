@@ -22,4 +22,4 @@ Rendering is a pure function from a post (JSON) and options (surface, width, the
 
 ## Optional
 
-- [Live demo](https://xeet.vercel.dev): hard posts rendered in the browser, four layouts each, with the exact `render()` input behind them under "view code"
+- [Live demo](https://xeet-rs.vercel.app): hard posts rendered in the browser, four layouts each, with the exact `render()` input behind them under "view code"

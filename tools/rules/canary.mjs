@@ -43,7 +43,7 @@ const accounts = opt(
 ).split(",").filter(Boolean);
 const budget = Number(opt("budget", "12"));
 const jsonOut = opt("json", null);
-const UA = "xeet-dev/0.1 (behavior canary, logged out, low volume; +https://github.com/vercel-labs/xeet)";
+const UA = "xeet-dev/0.1 (behavior canary, logged out, low volume; +https://github.com/rauchg/xeet)";
 
 const cps = (s) => Array.from(s ?? "");
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));

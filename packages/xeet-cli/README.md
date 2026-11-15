@@ -2,7 +2,7 @@
 
 Render X (Twitter) posts to Retina PNG from the command line — no headless browser, no system fonts to install.
 
-**[xeet.vercel.dev](https://xeet.vercel.dev)** · **[GitHub](https://github.com/vercel-labs/xeet)**
+**[xeet-rs.vercel.app](https://xeet-rs.vercel.app)** · **[GitHub](https://github.com/rauchg/xeet)**
 
 ## Install
 

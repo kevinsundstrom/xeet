@@ -7,9 +7,9 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/vercel-labs/xeet"
+    "url": "https://github.com/rauchg/xeet"
   },
-  "homepage": "https://xeet.vercel.dev",
+  "homepage": "https://xeet-rs.vercel.app",
   "engines": {
     "node": ">=22"
   },

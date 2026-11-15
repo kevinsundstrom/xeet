@@ -2,7 +2,7 @@
 
 Render X (Twitter) posts to Retina PNG without a browser — X's own layout, fonts, emoji, fallback shaping, and line-breaking rules rebuilt in safe Rust and compiled to WebAssembly.
 
-**[xeet.vercel.dev](https://xeet.vercel.dev)** · **[GitHub](https://github.com/vercel-labs/xeet)**
+**[xeet-rs.vercel.app](https://xeet-rs.vercel.app)** · **[GitHub](https://github.com/rauchg/xeet)**
 
 ## Install
 

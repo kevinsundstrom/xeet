@@ -59,6 +59,16 @@ const nextConfig = {
         ],
       },
       {
+        // tools/ship/promo-video.mjs names the release clip by its SHA-256.
+        source: "/og/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
+      },
+      {
         source: "/wasm/:path*",
         headers: [
           {

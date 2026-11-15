@@ -66,7 +66,7 @@ for (const [platform, path] of Object.entries(bins)) {
         version,
         description: `Prebuilt xeet binary for ${platform}. Install @xeet/cli instead.`,
         license: base.license,
-        repository: { type: "git", url: "https://github.com/vercel-labs/xeet" },
+        repository: { type: "git", url: "https://github.com/rauchg/xeet" },
         homepage: base.homepage,
         bugs: base.bugs,
         publishConfig: { access: "public" },

@@ -1,6 +1,6 @@
 # xeet
 
-**[xeet.vercel.dev](https://xeet.vercel.dev)**
+**[xeet-rs.vercel.app](https://xeet-rs.vercel.app)**
 
 xeet draws X posts exactly the way X draws them, without a browser. Hand it a
 post, or just an `x.com` link, and you get back a Retina PNG that matches what
@@ -36,7 +36,7 @@ Every image below is `xeet`'s own output, rendered in both light and dark themes
 </tr>
 </table>
 
-**[Browse all 17 edge-case renders (Web & iOS, carousels, polls, video posters, CJK/RTL) in `docs/GALLERY.md` →](docs/GALLERY.md)** — or try any post interactively in the [playground](https://xeet.vercel.dev).
+**[Browse all 17 edge-case renders (Web & iOS, carousels, polls, video posters, CJK/RTL) in `docs/GALLERY.md` →](docs/GALLERY.md)** — or try any post interactively in the [playground](https://xeet-rs.vercel.app).
 
 ## Features
 
@@ -185,7 +185,7 @@ let resolved = xeet_resolve::resolve(input, options, &fetch, Some(&lookup), Some
 ```
 
 ```sh
-npm i -g @xeet/cli               # or: cargo install --git https://github.com/vercel-labs/xeet xeet-cli
+npm i -g @xeet/cli               # or: cargo install --git https://github.com/rauchg/xeet xeet-cli
 
 xeet render post.json --surface web-detail --width 390 --theme dark --dpr 3 -o post.png
 xeet explain post.json --compact | jq .length

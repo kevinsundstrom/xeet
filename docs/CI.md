@@ -7,7 +7,7 @@ read, and the rule that decides whether a snapshot is allowed to exist.
 Everything here is live: `ci.yml` gates every push and pull request,
 `release.yml` builds and attaches the binaries for every supported platform and
 assembles the npm packages (publishing them is a manual, licensed step), and the
-site is deployed from the same tree at [xeet.vercel.dev](https://xeet.vercel.dev).
+site is deployed from the same tree at [xeet-rs.vercel.app](https://xeet-rs.vercel.app).
 `XEET_VENDOR_URL` is optional: the assets the build embeds (fonts,
 `icons.json`, `tokens.json`, the default avatar) are committed under
 `assets/vendor/`, so every job runs without a store configured. The store only

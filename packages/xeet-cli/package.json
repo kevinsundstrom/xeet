@@ -5,12 +5,12 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/vercel-labs/xeet",
+    "url": "https://github.com/rauchg/xeet",
     "directory": "packages/xeet-cli"
   },
-  "homepage": "https://xeet.vercel.dev",
+  "homepage": "https://xeet-rs.vercel.app",
   "bugs": {
-    "url": "https://github.com/vercel-labs/xeet/issues"
+    "url": "https://github.com/rauchg/xeet/issues"
   },
   "publishConfig": {
     "access": "public"

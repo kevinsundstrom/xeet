@@ -31,7 +31,7 @@ const HTML_PATH = join(UPSTREAM, "probe.html");
 const JS_DIR = join(UPSTREAM, "js");
 const LOCK_PATH = join(ROOT, "assets/rules.lock.json");
 
-const UA = "xeet-dev/0.1 (rule evidence, logged out; +https://github.com/vercel-labs/xeet)";
+const UA = "xeet-dev/0.1 (rule evidence, logged out; +https://github.com/rauchg/xeet)";
 const BASE = "https://abs.twimg.com/x-web/x-web/";
 
 const args = process.argv.slice(2);

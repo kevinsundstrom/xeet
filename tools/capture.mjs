@@ -27,7 +27,7 @@ const OUT = join(ROOT, "assets/vendor/capture");
 const JSONL = join(OUT, "payloads.jsonl");
 const STATE = join(OUT, "capture-state.json");
 
-const UA = "xeet-dev/0.1 (public post sampling, logged out, low volume; +https://github.com/vercel-labs/xeet)";
+const UA = "xeet-dev/0.1 (public post sampling, logged out, low volume; +https://github.com/rauchg/xeet)";
 const DELAY_MS = 1100;
 
 const args = process.argv.slice(2);

@@ -6,8 +6,8 @@ members = ["crates/xeet-core", "crates/xeet-text", "crates/xeet-resolve", "crate
 version = "0.1.0"
 edition = "2021"
 license = "Apache-2.0"
-repository = "https://github.com/vercel-labs/xeet"
-homepage = "https://xeet.vercel.dev"
+repository = "https://github.com/rauchg/xeet"
+homepage = "https://xeet-rs.vercel.app"
 publish = false
 
 [profile.release]

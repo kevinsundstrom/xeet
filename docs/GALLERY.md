@@ -1,6 +1,6 @@
 # Visual Gallery
 
-Every image below is rendered directly by `xeet` from [`app/_lib/hard.js`](../app/_lib/hard.js) via [`tools/ship/readme-gallery.mjs`](../tools/ship/readme-gallery.mjs) in both `light` and `dark` themes — GitHub automatically shows the theme matching your appearance setting. Try or customize any post interactively at **[xeet.vercel.dev](https://xeet.vercel.dev)**.
+Every image below is rendered directly by `xeet` from [`app/_lib/hard.js`](../app/_lib/hard.js) via [`tools/ship/readme-gallery.mjs`](../tools/ship/readme-gallery.mjs) in both `light` and `dark` themes — GitHub automatically shows the theme matching your appearance setting. Try or customize any post interactively at **[xeet-rs.vercel.app](https://xeet-rs.vercel.app)**.
 
 <table>
 <tr>

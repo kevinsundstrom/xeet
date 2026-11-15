@@ -1,5 +1,6 @@
 import { BotIdClient } from "botid/client";
 import localFont from "next/font/local";
+import { OG_VIDEO } from "./_generated/og-video.js";
 import { WASM_DIR } from "./_generated/wasm-manifest.js";
 import "./globals.css";
 
@@ -24,9 +25,33 @@ const geistMono = localFont({
   variable: "--font-mono",
 });
 
+const SITE = "https://xeet-rs.vercel.app";
+// Next resolves og:image against `metadataBase` but leaves og:video as given,
+// and crawlers need it absolute.
+const VIDEO_URL = new URL(OG_VIDEO.url, SITE).href;
+const TITLE = "xeet";
+const DESCRIPTION = "X posts rendered to PNG in WebAssembly. No browser.";
+
+// `app/opengraph-image.png` (from tools/ship/promo-video.mjs) becomes og:image
+// and, by X's fallback, the card image; the video is the same tool's release
+// clip, at a content-hashed, immutable URL.
 export const metadata = {
-  title: "xeet",
-  description: "X posts rendered to PNG in WebAssembly. No browser.",
+  metadataBase: new URL(SITE),
+  title: TITLE,
+  description: DESCRIPTION,
+  openGraph: {
+    type: "website",
+    url: "/",
+    siteName: "xeet",
+    title: TITLE,
+    description: DESCRIPTION,
+    videos: [{ ...OG_VIDEO, url: VIDEO_URL, secureUrl: VIDEO_URL }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: TITLE,
+    description: DESCRIPTION,
+  },
   icons: {
     icon: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23000'/%3E%3Cpath d='M50 26 73 70H27z' fill='%23fff'/%3E%3C/svg%3E",
   },
