@@ -698,7 +698,11 @@ fn carousel(
             let r = bar.width.min(4.0) * 0.5;
             fill(
                 out,
-                shape(Rect::new(bar.x, ind_y, bar.width, 4.0), r, CornerShape::Round),
+                shape(
+                    Rect::new(bar.x, ind_y, bar.width, 4.0),
+                    r,
+                    CornerShape::Round,
+                ),
                 color,
             );
         }
@@ -1303,12 +1307,21 @@ mod attribution {
 
         // Mid-scroll and end-of-scroll windowing match `Wg` + `Gg` (`Pcxk6Kf2.js`).
         let (bars_mid, _) = layout_indicator_bars(5.0, 20);
-        assert_eq!(bars_mid[2].width, 6.0, "leading edge of shifted window scales by 0.5");
+        assert_eq!(
+            bars_mid[2].width, 6.0,
+            "leading edge of shifted window scales by 0.5"
+        );
         assert_eq!(bars_mid[5].width, 22.0, "active slot 5 is 22 px");
-        assert_eq!(bars_mid[8].width, 6.0, "trailing edge of shifted window scales by 0.5");
+        assert_eq!(
+            bars_mid[8].width, 6.0,
+            "trailing edge of shifted window scales by 0.5"
+        );
         let (bars_end, total_end) = layout_indicator_bars(19.0, 20);
         assert_eq!(total_end, 120.5);
-        assert_eq!(bars_end[13].width, 6.0, "leading edge at end of carousel scales by 0.5");
+        assert_eq!(
+            bars_end[13].width, 6.0,
+            "leading edge at end of carousel scales by 0.5"
+        );
         assert_eq!(bars_end[19].width, 22.0, "last slot active at 22 px");
 
         // Non-overflowing 2-image 3:4 portrait carousel draws no indicator bar even with empty text.
