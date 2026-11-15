@@ -71,7 +71,7 @@ for (const [platform, path] of Object.entries(bins)) {
         type: "commonjs",
         description: `Prebuilt self-contained xeet native binary for ${platform}. Install @xeet/cli instead.`,
         license: base.license,
-        repository: { type: "git", url: "https://github.com/rauchg/xeet" },
+        repository: { type: "git", url: "git+https://github.com/rauchg/xeet.git" },
         homepage: base.homepage,
         bugs: base.bugs,
         publishConfig: { access: "public" },

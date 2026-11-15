@@ -114,9 +114,9 @@ jobs:
       matrix:
         include:
           - { platform: darwin-arm64, os: macos-15, target: aarch64-apple-darwin, exe: xeet, can_exec: "true" }
-          - { platform: darwin-x64, os: macos-15-intel, target: x86_64-apple-darwin, exe: xeet, can_exec: "true" }
+          - { platform: darwin-x64, os: macos-15, target: x86_64-apple-darwin, exe: xeet, can_exec: "false" }
           - { platform: linux-x64, os: ubuntu-24.04, target: x86_64-unknown-linux-gnu, exe: xeet, can_exec: "true" }
-          - { platform: linux-arm64, os: ubuntu-24.04-arm, target: aarch64-unknown-linux-gnu, exe: xeet, can_exec: "true" }
+          - { platform: linux-arm64, os: ubuntu-24.04, target: aarch64-unknown-linux-gnu, exe: xeet, can_exec: "qemu" }
           - { platform: win32-x64, os: windows-2022, target: x86_64-pc-windows-msvc, exe: xeet.exe, can_exec: "true" }
           - { platform: win32-arm64, os: windows-2022, target: aarch64-pc-windows-msvc, exe: xeet.exe, can_exec: "false" }
     runs-on: ${{ matrix.os }}
@@ -135,6 +135,12 @@ jobs:
         env:
           TARGET: ${{ matrix.target }}
         run: |
+          if [ "$TARGET" = "aarch64-unknown-linux-gnu" ]; then
+            sudo apt-get update -qq
+            sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq gcc-aarch64-linux-gnu qemu-user-static
+            echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> "$GITHUB_ENV"
+            echo "CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc" >> "$GITHUB_ENV"
+          fi
           rustup toolchain install stable --profile minimal --no-self-update
           rustup default stable
           rustup target add "$TARGET"
@@ -160,14 +166,17 @@ jobs:
           const bin = process.env.STAGE_BIN;
           const dir = process.env.STAGE_DIR;
           const plat = process.env.PLATFORM;
+          const mode = process.env.CAN_EXEC;
           const bytes = fs.readFileSync(bin);
           if (bytes.length < 1_000_000) throw new Error("unexpectedly small binary: " + bytes.length + " bytes");
           const binSha = crypto.createHash("sha256").update(bytes).digest("hex");
           fs.writeFileSync(dir + "/binary.sha256", binSha + "\n");
           console.log(plat + " binary: " + bytes.length + " bytes, sha256=" + binSha);
 
-          if (process.env.CAN_EXEC === "true") {
-            const ver = execFileSync(bin, ["--version"], { encoding: "utf8" }).trim();
+          if (mode === "true" || mode === "qemu") {
+            const runCmd = mode === "qemu" ? "qemu-aarch64-static" : bin;
+            const prefix = mode === "qemu" ? ["-L", "/usr/aarch64-linux-gnu", bin] : [];
+            const ver = execFileSync(runCmd, [...prefix, "--version"], { encoding: "utf8" }).trim();
             console.log("version: " + ver);
             const pngPath = dir + "/smoke.png";
             const post = JSON.stringify({
@@ -175,10 +184,11 @@ jobs:
               createdAt: "2026-11-15T00:00:00Z",
               now: "2026-11-15T01:00:00Z",
             });
-            execFileSync(bin, ["render", "-", "--width", "390", "--theme", "dark", "--dpr", "2", "-o", pngPath], {
-              input: post,
-              stdio: ["pipe", "inherit", "inherit"],
-            });
+            execFileSync(
+              runCmd,
+              [...prefix, "render", "-", "--width", "390", "--theme", "dark", "--dpr", "2", "-o", pngPath],
+              { input: post, stdio: ["pipe", "inherit", "inherit"] },
+            );
             const png = fs.readFileSync(pngPath);
             if (png.subarray(0, 8).toString("hex") !== "89504e470d0a1a0a") {
               throw new Error("smoke output is not a valid PNG");
@@ -312,7 +322,7 @@ jobs:
           const path = require("node:path");
           const platforms = [
             ["darwin-arm64", "xeet", true],
-            ["darwin-x64", "xeet", true],
+            ["darwin-x64", "xeet", false],
             ["linux-x64", "xeet", true],
             ["linux-arm64", "xeet", true],
             ["win32-x64", "xeet.exe", true],
@@ -373,7 +383,9 @@ jobs:
           ( cd dist/release && sha256sum ./*.tgz | sed 's| \./| |' > SHA256SUMS.txt )
           cat dist/release/SHA256SUMS.txt
 
+      # Public Sigstore transparency-log signing activates automatically once the repository is public.
       - name: Attest build provenance for release tarballs
+        if: github.event.repository.private == false
         uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2.4.0
         with:
           subject-path: "dist/release/*.tgz"
