@@ -236,6 +236,14 @@ pub fn face_bytes(file: &str) -> Option<&'static [u8]> {
         .copied()
 }
 
+/// True when any face in this build was omitted from the binary and must be
+/// supplied at runtime via [`register_font`] / [`load_packs_for_json`].
+/// Constant-folds to `false` in full-embed native builds.
+#[inline]
+pub fn has_lazy_packs() -> bool {
+    FACES.iter().any(|face| face.data.is_empty())
+}
+
 /// True once every file in `pack` has bytes. `core` is always loaded.
 pub fn pack_loaded(pack: &str) -> bool {
     if pack == "core" {
@@ -666,6 +674,9 @@ pub fn packs_for_json(json: &str) -> Vec<&'static str> {
 /// [`packs_for_json`] minus the packs whose files are already registered. This
 /// is what a host asks for before a render.
 pub fn missing_packs_for_json(json: &str) -> Vec<&'static str> {
+    if !has_lazy_packs() {
+        return Vec::new();
+    }
     let mut packs = packs_for_json(json);
     packs.retain(|pack| !pack_loaded(pack));
     packs

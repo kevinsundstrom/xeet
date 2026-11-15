@@ -1,17 +1,8 @@
 # Periodic upstream X drift alarm.
 #
-# Runs every 6 hours (and on manual dispatch) with zero private vendor secrets:
-#   1. Checks X's live stylesheet & design tokens (`styles-*.css` on x.com),
-#      including squircle scaling, 16:9 video, Chirp `@font-face`, carousel
-#      indicator classes (`bg-(--x-fg-secondary)`, `-mt-2`, `mb-3`), and
-#      flex/wrap classes.
-#   2. Checks X's live SSR DOM & layout formulas across real public X posts
-#      and profile timelines (20-image & 20-strip carousels, 7-slot windowed
-#      timeline indicator bar, 2-image non-overflowing carousel, 9:16 510 px
-#      vertical video cap, video + quote coexistence, `note_tweet` + quote).
-#
-# When any contract or layout invariant drifts, this workflow fails RED and
-# opens (or comments on) a single deduplicated GitHub Issue to alarm us.
+# Runs every 6 hours (and on manual dispatch) with zero private vendor secrets.
+# Never runs on pull requests. All actions are SHA-pinned first-party `actions/*`
+# with `persist-credentials: false` and job-scoped least privilege.
 name: upstream-watch
 
 on:
@@ -19,10 +10,7 @@ on:
     - cron: "17 */6 * * *" # every 6 hours, off the hour
   workflow_dispatch:
 
-permissions:
-  contents: read
-  issues: write
-  actions: write
+permissions: {}
 
 concurrency:
   group: upstream-watch
@@ -30,12 +18,22 @@ concurrency:
 
 jobs:
   canary:
-    runs-on: ubuntu-latest
+    name: Probe live x.com invariants
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write # Open or comment on deduplicated upstream drift alarm issues
+      actions: write # Dispatch sync.yml when upstream lockfile hash rotates
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 22 }
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "24"
+          package-manager-cache: false
 
       - name: Probe live x.com stylesheet and SSR layout invariants
         id: canary
@@ -77,7 +75,11 @@ jobs:
           TITLE="Upstream X alarm: layout or payload contract changed"
           EXISTING=$(gh issue list --state open --search "\"$TITLE\" in:title" --json number --jq '.[0].number // empty')
           {
-            cat canary-report.md
+            if [ -f canary-report.md ]; then
+              cat canary-report.md
+            else
+              echo "upstream-canary exited non-zero without writing canary-report.md."
+            fi
             echo ""
             echo "Workflow run: $RUN_URL"
           } > issue-body.md

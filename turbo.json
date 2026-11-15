@@ -3,12 +3,12 @@
   "globalDependencies": ["Cargo.toml", "Cargo.lock", "pnpm-lock.yaml", "tools/ship/vercel-build.mjs"],
   "tasks": {
     "//#ci:gates": {
+      "tags": ["ci"],
       "inputs": [
+        ".github/workflows/**",
         "crates/**",
-        "packages/xeet/src/**",
-        "tools/ship/check-contract.mjs",
-        "tools/ship/check-unsafe.mjs",
-        "tools/ship/golden-stamp.mjs",
+        "packages/**",
+        "tools/ship/**",
         "tests/golden/**",
         "tools/oracle/**",
         "tools/playground/**"
@@ -16,21 +16,30 @@
       "outputs": []
     },
     "//#ci:rust-test": {
-      "inputs": ["crates/**", "assets/**", "tests/**"],
+      "tags": ["ci", "ci:cpus:8", "ci:os:ubuntu"],
+      "inputs": ["crates/**", "assets/**", "tests/**", "tools/ship/parity-check.mjs"],
       "outputs": []
     },
     "//#ci:wasm": {
-      "inputs": ["crates/**", "assets/**", "tools/ship/build-wasm.mjs"],
+      "tags": ["ci:cpus:8"],
+      "inputs": ["crates/**", "assets/**", "tools/ship/build-wasm.mjs", "tools/ship/build-font-packs.mjs"],
       "outputs": ["packages/xeet/wasm/**"]
     },
     "//#ci:pkg-test": {
       "dependsOn": ["//#ci:wasm"],
-      "inputs": ["packages/xeet/src/**", "packages/xeet/test/**", "packages/xeet/package.json"],
+      "tags": ["ci"],
+      "inputs": [
+        "packages/xeet/src/**",
+        "packages/xeet/test/**",
+        "packages/xeet/package.json",
+        "packages/xeet-cli/**",
+        "tools/ship/package-cli.mjs"
+      ],
       "outputs": []
     },
     "//#ci:site": {
-      "dependsOn": ["//#ci:gates", "//#ci:rust-test", "//#ci:wasm", "//#ci:pkg-test"],
-      "inputs": ["app/**", "next.config.mjs", "README.md"],
+      "dependsOn": ["//#ci:wasm"],
+      "inputs": ["app/**", "public/og/**", "next.config.mjs", "README.md"],
       "outputs": [".next/**", "!.next/cache/**", "public/wasm/**"]
     }
   }

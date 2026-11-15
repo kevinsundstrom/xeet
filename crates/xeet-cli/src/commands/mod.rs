@@ -50,13 +50,14 @@ pub fn is_command(name: &str) -> bool {
 // Lazy font packs
 // ---------------------------------------------------------------------------
 //
-// A release CLI is built with `XEET_FONT_PACKS=core`: Chirp and Arial are
-// embedded, everything else is a pack beside the binary. Local builds embed all
-// faces, so `missing_packs_for_json` is empty and these are no-ops.
+// Native CLI builds embed all faces (`has_lazy_packs() == false`), so every
+// helper below compiles down to a no-op with zero filesystem or serialization
+// overhead. Core-only builds (`XEET_FONT_PACKS=core`) still resolve packs from
+// `XEET_FONT_DIR` or beside the binary.
 
 /// The directory that holds `packs.json` and `<pack>.bin`, if this build needs
-/// one. `XEET_FONT_DIR` wins, then the npm package layout (`bin/xeet` with a
-/// sibling `fonts/`), then a `cargo run` from the repo root.
+/// one. `XEET_FONT_DIR` wins, then a sibling `fonts/` directory, then (in debug
+/// builds only) a `cargo run` from the repo root.
 pub fn pack_dir() -> Option<PathBuf> {
     if let Ok(dir) = std::env::var("XEET_FONT_DIR") {
         let dir = PathBuf::from(dir);
@@ -77,19 +78,33 @@ pub fn pack_dir() -> Option<PathBuf> {
             }
         }
     }
-    let dev = PathBuf::from("packages/xeet/wasm/fonts");
-    dev.join("packs.json").exists().then_some(dev)
+    #[cfg(debug_assertions)]
+    {
+        let dev = PathBuf::from("packages/xeet/wasm/fonts");
+        if dev.join("packs.json").exists() {
+            return Some(dev);
+        }
+    }
+    None
 }
 
 /// Registers the packs `value` needs.
+#[inline]
 pub fn ensure_fonts_for_json(value: &serde_json::Value) -> Result<(), String> {
+    if !xeet_core::fonts::has_lazy_packs() {
+        return Ok(());
+    }
     let json = serde_json::to_string(value)
         .map_err(|e| format!("xeet: could not serialize the font request: {e}"))?;
     ensure_fonts_for_json_text(&json)
 }
 
 /// [`ensure_fonts_for_json`] for a request that is already JSON.
+#[inline]
 pub fn ensure_fonts_for_json_text(json: &str) -> Result<(), String> {
+    if !xeet_core::fonts::has_lazy_packs() {
+        return Ok(());
+    }
     let needed = xeet_core::fonts::missing_packs_for_json(json);
     if needed.is_empty() {
         return Ok(());
@@ -105,12 +120,20 @@ pub fn ensure_fonts_for_json_text(json: &str) -> Result<(), String> {
 }
 
 /// Registers the packs a post and its options need.
+#[inline]
 pub fn ensure_fonts_for_post(post: &Post, options: &RenderOptions) -> Result<(), String> {
+    if !xeet_core::fonts::has_lazy_packs() {
+        return Ok(());
+    }
     ensure_fonts_for_json(&serde_json::json!({ "post": post, "options": options }))
 }
 
 /// Loads every pack, for commands that inspect the whole font set.
+#[inline]
 pub fn load_all_fonts() -> Result<(), String> {
+    if !xeet_core::fonts::has_lazy_packs() {
+        return Ok(());
+    }
     let Some(dir) = pack_dir() else {
         return Ok(());
     };

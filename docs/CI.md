@@ -1,26 +1,32 @@
 # CI: what runs, what it needs, and how a golden earns its place
 
-This file is the implementation: the workflows in `.github/workflows/` (the three
-pipelines below, plus `behavior-canary.yml` and `release.yml`), the store they
-read, and the rule that decides whether a snapshot is allowed to exist.
+This file is the implementation: Vercel CI (`turbo.json` `"tags": ["ci"]` +
+`tools/ship/vercel-build.mjs`), the GitHub Actions workflows in
+`.github/workflows/` (`release.yml`, `upstream-watch.yml`, `sync.yml`, and
+`behavior-canary.yml`), the store they read, and the rule that decides whether
+a snapshot is allowed to exist.
 
-Everything here is live: `ci.yml` gates every push and pull request,
-`release.yml` builds and attaches the binaries for every supported platform and
-assembles the npm packages (publishing them is a manual, licensed step), and the
-site is deployed from the same tree at [xeet-rs.vercel.app](https://xeet-rs.vercel.app).
+Pull requests never trigger CI or deployment builds: PRs are treated
+functionally like issues so untrusted fork code never runs on runners. Every
+push to `main` runs the full verification graph in Vercel CI, `release.yml`
+builds self-contained native binaries on `v*` tags behind the protected
+`release` environment and publishes via npm OIDC Trusted Publishing (zero
+`NPM_TOKEN` secrets), and the site is deployed from the same tree at
+[xeet-rs.vercel.app](https://xeet-rs.vercel.app).
 `XEET_VENDOR_URL` is optional: the assets the build embeds (fonts,
 `icons.json`, `tokens.json`, the default avatar) are committed under
 `assets/vendor/`, so every job runs without a store configured. The store only
 adds the captured pages and upstream snapshots, and the steps that need them say
 why they skipped instead of failing.
 
-## The three pipelines
+## The pipelines
 
-| Workflow | When | Does | Time |
+| Pipeline | When | Does | Time |
 |---|---|---|---|
-| `ci.yml` (pipeline 1) | every PR and push to main | fmt, clippy, unit tests, twitter-text conformance, rules matrix, rules canary, the `#![forbid(unsafe_code)]` check, layout parity against stored Chrome geometry, raster goldens, frame and paint oracles, determinism (native and WASM, three OSes), benchmarks and the binary-size budget, `cargo audit` | minutes |
-| `upstream-watch.yml` (pipeline 2) | hourly (`17 * * * *`) | one logged-out request to x.com; exit 3 means upstream moved, and it starts the sync | seconds |
-| `sync.yml` (pipeline 3) | from the watch, or by hand | snapshot to the private store, regenerate tokens, fingerprint, re-run the oracle, gates, then **either** a bot pull request **or** a repair-brief issue | 10–20 minutes |
+| Vercel CI (`turbo.json`) | push to `main` | `ci:gates` (contract, `#![forbid(unsafe_code)]`, golden stamps, `actionlint`), `ci:rust-test` on 8 vCPU Ubuntu (fmt, clippy, workspace tests, stored Chrome layout & raster parity), `ci:wasm` + `ci:pkg-test` | ~1–2 minutes |
+| `release.yml` | `v*` tag on `main` | ancestry & version verification, 6-platform self-contained Rust binaries, WASM build, 6-way cross-OS + WASM PNG determinism check, GitHub Artifact Attestations, GitHub Release, npm OIDC Trusted Publishing | ~5 minutes |
+| `upstream-watch.yml` (pipeline 2) | every 6h (`17 */6 * * *`) | logged-out probe of live x.com stylesheet & SSR invariants; opens deduplicated alarm issue or dispatches `sync.yml` | seconds |
+| `sync.yml` (pipeline 3) | from watch, or by hand | snapshot to the private store, regenerate tokens, fingerprint, gates, then **either** a signed token-port PR **or** a repair-brief issue | 10–20 minutes |
 
 Pipeline 3 is a skeleton with real seams: the oracle re-capture step runs the
 replica harness (`tools/oracle/replica*.mjs`) and the behavior canary. The two
@@ -69,8 +75,8 @@ separate:
 
 | Secret | Used by | Rights |
 |---|---|---|
-| `XEET_VENDOR_URL` | `ci.yml`, `sync.yml` | read |
-| `XEET_VENDOR_TOKEN` | `ci.yml`, `sync.yml` | read |
+| `XEET_VENDOR_URL` | `sync.yml`, `behavior-canary.yml` | read |
+| `XEET_VENDOR_TOKEN` | `sync.yml`, `behavior-canary.yml` | read |
 | `XEET_VENDOR_PUT_URL` | `sync.yml` only | write |
 | `XEET_VENDOR_PUT_TOKEN` | `sync.yml` only | write |
 

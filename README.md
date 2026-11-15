@@ -402,9 +402,11 @@ JSON Schema and the MCP tool definitions in one shape;
 rejects a golden that changed without a new oracle stamp;
 [`determinism.mjs`](tools/ship/determinism.mjs) finds native and WASM SHA-256
 identical on 24/24 cases, across Linux x64, Linux arm64 and macOS. The suite
-gates every push and pull request in both Vercel CI
-([`tools/ship/vercel-build.mjs`](tools/ship/vercel-build.mjs)) and GitHub
-Actions ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)).
+gates every push to `main` in Vercel CI ([`turbo.json`](turbo.json),
+[`tools/ship/vercel-build.mjs`](tools/ship/vercel-build.mjs)), while tagged
+releases verify cross-OS determinism across macOS, Linux, Windows and WASM
+before publishing via GitHub OIDC Trusted Publishing
+([`.github/workflows/release.yml`](.github/workflows/release.yml)).
 
 ## License
 

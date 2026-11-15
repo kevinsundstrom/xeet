@@ -1,178 +1,418 @@
-name: release
-
-# Builds the `xeet` binary for every platform `npm i -g xeet-cli` supports and
-# assembles the npm packages. Tags build and attach the artifacts; publishing to
-# npm only happens when this is run by hand with `publish: true` and an
-# NPM_TOKEN secret is set.
+# Hardened release pipeline for `@xeet/core`, `@xeet/cli`, and `@xeet/cli-*`.
 #
-# Publishing is deliberately manual: the binary embeds X's fonts (Chirp), Arial,
-# Apple Color Emoji and Hiragino Sans, so redistribution needs licensing sign-off
-# before anything goes to a public registry.
+# Security model (adapted from rauchg/typing-stats + npm OIDC Trusted Publishing):
+#   - Triggered ONLY on `v*` tag pushes — never on PRs or arbitrary branch dispatches.
+#   - Top-level `permissions: {}`; write/OIDC/attestation permissions exist ONLY on
+#     the `publish` job behind the protected `release` GitHub Environment (`v*` tag
+#     deployment policy).
+#   - 100% first-party `actions/*` pinned to full 40-char commit SHAs (enforced at
+#     the repo level via `sha_pinning_required: true`), `persist-credentials: false`
+#     on every checkout, zero build/package caches, and zero `${{ }}` inside `run:`.
+#   - Tagged commit must be an ancestor of `origin/main` and agree with `Cargo.toml`
+#     and every `package.json`.
+#   - Native `xeet` binaries embed all font faces directly into read-only memory
+#     pages (`__const` / `.rdata`) — single-file stripped LTO executables with zero
+#     runtime pack hashing or postinstall scripts.
+#   - Every native OS/CPU binary and `@xeet/core` WASM must render the identical
+#     SHA-256 PNG for an ASCII + Emoji + CJK + Math test post before publishing.
+#   - Authenticates to npm exclusively via GitHub OIDC Trusted Publishing (Node 24 /
+#     npm >= 11.5.1) — zero long-lived `NPM_TOKEN` secrets stored in GitHub.
+name: release
 
 on:
   push:
-    tags: ["v*"]
-  workflow_dispatch:
-    inputs:
-      publish:
-        description: "Publish the packages to npm"
-        type: boolean
-        default: false
+    tags:
+      - "v*"
 
-permissions:
-  contents: read
+permissions: {}
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  # A tag is a promise that the pushed commit is the release. Refuse to build
-  # one whose version disagrees with the packages, before the expensive matrix.
   verify:
+    name: Verify tag & gates
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 22 }
-      - name: The tag is vX.Y.Z and both packages say X.Y.Z
-        if: github.ref_type == 'tag'
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Verify tagged commit is an ancestor of main
         run: |
-          tag="$GITHUB_REF_NAME"
-          case "$tag" in
-            v[0-9]*.[0-9]*.[0-9]*) ;;
-            *) echo "::error::tag $tag is not vX.Y.Z"; exit 1 ;;
-          esac
-          version="${tag#v}"
-          failed=0
-          for pkg in packages/xeet packages/xeet-cli; do
-            actual=$(node -p "require('./$pkg/package.json').version")
-            if [ "$actual" != "$version" ]; then
-              echo "::error file=$pkg/package.json::$pkg is $actual but the tag $tag says $version"
-              failed=1
-            else
-              echo "$pkg: $actual matches $tag"
-            fi
-          done
-          exit "$failed"
+          git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
+          if ! git merge-base --is-ancestor "HEAD^{commit}" refs/remotes/origin/main; then
+            echo "::error::Tagged commit $GITHUB_SHA is not an ancestor of origin/main"
+            exit 1
+          fi
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "24"
+          package-manager-cache: false
+
+      - name: Validate tag format and manifest versions
+        id: version
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          if [[ ! "$TAG" =~ ^v([0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?)$ ]]; then
+            echo "::error::Invalid release tag: $TAG (expected vX.Y.Z)"
+            exit 1
+          fi
+          export VERSION="${TAG#v}"
+          node <<'NODE'
+          const fs = require("node:fs");
+          const expected = process.env.VERSION;
+          let failed = false;
+          const cargo = fs.readFileSync("Cargo.toml", "utf8").match(/^version = "([^"]+)"/m)?.[1];
+          if (cargo !== expected) {
+            console.error("::error file=Cargo.toml::Cargo.toml is " + cargo + ", expected " + expected);
+            failed = true;
+          }
+          for (const file of ["package.json", "packages/xeet/package.json", "packages/xeet-cli/package.json"]) {
+            const pkg = JSON.parse(fs.readFileSync(file, "utf8"));
+            if (pkg.version !== expected) {
+              console.error("::error file=" + file + "::" + file + " is " + pkg.version + ", expected " + expected);
+              failed = true;
+            }
+            for (const [dep, ver] of Object.entries(pkg.optionalDependencies ?? {})) {
+              if (ver !== expected) {
+                console.error("::error file=" + file + "::" + dep + " in " + file + " is " + ver + ", expected " + expected);
+                failed = true;
+              }
+            }
+          }
+          if (failed) process.exit(1);
+          console.log("All workspace manifests match v" + expected);
+          NODE
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Contract, unsafe & golden-stamp gates
+        run: |
+          node tools/ship/check-contract.mjs
+          node tools/ship/check-unsafe.mjs
+          node tools/ship/golden-stamp.mjs --check
 
   build:
+    name: Build (${{ matrix.platform }})
     needs: verify
+    permissions:
+      contents: read
+    timeout-minutes: 30
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         include:
-          - { platform: darwin-arm64, os: macos-14, target: aarch64-apple-darwin, exe: xeet }
-          - { platform: darwin-x64, os: macos-15-intel, target: x86_64-apple-darwin, exe: xeet }
-          - { platform: linux-x64, os: ubuntu-24.04, target: x86_64-unknown-linux-gnu, exe: xeet }
-          - { platform: linux-arm64, os: ubuntu-24.04-arm, target: aarch64-unknown-linux-gnu, exe: xeet }
-          - { platform: win32-x64, os: windows-latest, target: x86_64-pc-windows-msvc, exe: xeet.exe }
+          - { platform: darwin-arm64, os: macos-15, target: aarch64-apple-darwin, exe: xeet, can_exec: "true" }
+          - { platform: darwin-x64, os: macos-15-intel, target: x86_64-apple-darwin, exe: xeet, can_exec: "true" }
+          - { platform: linux-x64, os: ubuntu-24.04, target: x86_64-unknown-linux-gnu, exe: xeet, can_exec: "true" }
+          - { platform: linux-arm64, os: ubuntu-24.04-arm, target: aarch64-unknown-linux-gnu, exe: xeet, can_exec: "true" }
+          - { platform: win32-x64, os: windows-2022, target: x86_64-pc-windows-msvc, exe: xeet.exe, can_exec: "true" }
+          - { platform: win32-arm64, os: windows-2022, target: aarch64-pc-windows-msvc, exe: xeet.exe, can_exec: "false" }
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-        with: { targets: "${{ matrix.target }}" }
-      - uses: Swatinem/rust-cache@v2
-        with: { key: "${{ matrix.target }}" }
-      - name: Build
-        env:
-          # Embed Chirp + Arial only; the npm packages ship the lazy packs.
-          XEET_FONT_PACKS: core
-        # `--locked`: the release is built from the committed Cargo.lock, never
-        # from a dependency set that happened to resolve that day.
-        run: cargo build --release --locked -p xeet-cli --bin xeet --target ${{ matrix.target }}
-      - name: Smoke test
-        shell: bash
-        run: |
-          echo '{"text":"release smoke test"}' | "target/${{ matrix.target }}/release/${{ matrix.exe }}" render - -o smoke.png
-          test -s smoke.png
-      - uses: actions/upload-artifact@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
-          name: xeet-${{ matrix.platform }}
-          path: target/${{ matrix.target }}/release/${{ matrix.exe }}
-          retention-days: 14
+          persist-credentials: false
 
-  package:
-    needs: build
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "24"
+          package-manager-cache: false
+
+      - name: Install Rust target
+        shell: bash
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          rustup toolchain install stable --profile minimal --no-self-update
+          rustup default stable
+          rustup target add "$TARGET"
+          rustc -V && cargo -V
+
+      - name: Build self-contained release binary
+        shell: bash
+        env:
+          TARGET: ${{ matrix.target }}
+          PLATFORM: ${{ matrix.platform }}
+          EXE: ${{ matrix.exe }}
+          CAN_EXEC: ${{ matrix.can_exec }}
+        run: |
+          cargo build --release --locked -p xeet-cli --bin xeet --target "$TARGET"
+          export STAGE_DIR="stage/$PLATFORM"
+          export STAGE_BIN="$STAGE_DIR/$EXE"
+          mkdir -p "$STAGE_DIR"
+          cp "target/$TARGET/release/$EXE" "$STAGE_BIN"
+          node <<'NODE'
+          const crypto = require("node:crypto");
+          const fs = require("node:fs");
+          const { execFileSync } = require("node:child_process");
+          const bin = process.env.STAGE_BIN;
+          const dir = process.env.STAGE_DIR;
+          const plat = process.env.PLATFORM;
+          const bytes = fs.readFileSync(bin);
+          if (bytes.length < 1_000_000) throw new Error("unexpectedly small binary: " + bytes.length + " bytes");
+          const binSha = crypto.createHash("sha256").update(bytes).digest("hex");
+          fs.writeFileSync(dir + "/binary.sha256", binSha + "\n");
+          console.log(plat + " binary: " + bytes.length + " bytes, sha256=" + binSha);
+
+          if (process.env.CAN_EXEC === "true") {
+            const ver = execFileSync(bin, ["--version"], { encoding: "utf8" }).trim();
+            console.log("version: " + ver);
+            const pngPath = dir + "/smoke.png";
+            const post = JSON.stringify({
+              text: "release smoke 🚀 日本語 𝗯𝗼𝗹𝗱 שלום مرحبا",
+              createdAt: "2026-11-15T00:00:00Z",
+              now: "2026-11-15T01:00:00Z",
+            });
+            execFileSync(bin, ["render", "-", "--width", "390", "--theme", "dark", "--dpr", "2", "-o", pngPath], {
+              input: post,
+              stdio: ["pipe", "inherit", "inherit"],
+            });
+            const png = fs.readFileSync(pngPath);
+            if (png.subarray(0, 8).toString("hex") !== "89504e470d0a1a0a") {
+              throw new Error("smoke output is not a valid PNG");
+            }
+            const renderSha = crypto.createHash("sha256").update(png).digest("hex");
+            fs.writeFileSync(dir + "/render.sha256", renderSha + "\n");
+            fs.rmSync(pngPath);
+            console.log(plat + " render sha256=" + renderSha);
+          }
+          NODE
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: cli-${{ matrix.platform }}
+          path: stage/${{ matrix.platform }}
+          if-no-files-found: error
+          retention-days: 7
+
+  wasm:
+    name: Build & test @xeet/core WASM
+    needs: verify
     runs-on: ubuntu-24.04
+    timeout-minutes: 25
     permissions:
-      # Creating the GitHub Release and uploading assets to it.
-      contents: write
+      contents: read
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 22, registry-url: "https://registry.npmjs.org" }
-      - uses: actions/download-artifact@v4
-        with: { path: bins, pattern: "xeet-*" }
-      - name: Build the lazy font packs
-        run: node tools/ship/build-font-packs.mjs
-      - name: Assemble the npm packages
-        run: |
-          args=()
-          for dir in bins/xeet-*; do
-            platform="${dir#bins/xeet-}"
-            exe="$dir/xeet"; [ -f "$exe" ] || exe="$dir/xeet.exe"
-            args+=(--bin "$platform=$exe")
-          done
-          node tools/ship/package-cli.mjs "${args[@]}" --out dist/npm
-      - uses: actions/upload-artifact@v4
-        with: { name: npm-packages, path: dist/npm, retention-days: 14 }
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
 
-      # --- Tag releases: the packed tarballs as release assets ----------------
-      - name: Pack the CLI tarballs
-        if: github.ref_type == 'tag'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "24"
+          package-manager-cache: false
+
+      - name: Install Rust wasm32 target and verified wasm-bindgen 0.2.130
         run: |
-          mkdir -p dist/tarballs
-          packs="$PWD/dist/tarballs"
-          for dir in dist/npm/cli-* dist/npm/cli; do
-            # From inside the directory, so the tarball is named after the
-            # package (`xeet-cli-linux-x64-<version>.tgz`), not the folder.
-            ( cd "$dir" && npm pack --pack-destination "$packs" >/dev/null )
+          rustup toolchain install stable --profile minimal --no-self-update
+          rustup default stable
+          rustup target add wasm32-unknown-unknown
+          WBG_TAR="$RUNNER_TEMP/wasm-bindgen.tar.gz"
+          WBG_DIR="$RUNNER_TEMP/wbg-bin"
+          mkdir -p "$WBG_DIR"
+          curl -fsSL "https://github.com/rustwasm/wasm-bindgen/releases/download/0.2.130/wasm-bindgen-0.2.130-x86_64-unknown-linux-musl.tar.gz" -o "$WBG_TAR"
+          echo "9687f3bb551b9f66f37ed32a40d7913a00f7962db653054e56857bc306c3227f  $WBG_TAR" | sha256sum -c -
+          tar -xzf "$WBG_TAR" -C "$WBG_DIR" --strip-components=1 "wasm-bindgen-0.2.130-x86_64-unknown-linux-musl/wasm-bindgen"
+          rm -f "$WBG_TAR"
+          echo "$WBG_DIR" >> "$GITHUB_PATH"
+
+      - name: Build, test, and pack @xeet/core
+        run: |
+          cargo test --locked -p xeet-wasm
+          node tools/ship/build-wasm.mjs
+          XEET_REQUIRE_WASM=1 node --test packages/xeet/test/xeet.test.js packages/xeet/test/fonts.test.js
+
+          mkdir -p stage/core-pkg stage/wasm-out
+          node --input-type=module <<'NODE'
+          import crypto from "node:crypto";
+          import fs from "node:fs";
+          import { loadXeet } from "./packages/xeet/src/node.js";
+          const xeet = await loadXeet();
+          const { png } = xeet.render(
+            {
+              text: "release smoke 🚀 日本語 𝗯𝗼𝗹𝗱 שלום مرحبا",
+              createdAt: "2026-11-15T00:00:00Z",
+              now: "2026-11-15T01:00:00Z",
+            },
+            { width: 390, theme: "dark", dpr: 2 },
+          );
+          const sha = crypto.createHash("sha256").update(png).digest("hex");
+          fs.writeFileSync("stage/wasm-out/render.sha256", sha + "\n");
+          console.log("wasm render sha256=" + sha);
+          NODE
+
+          cp -R packages/xeet/. stage/core-pkg/
+          cp LICENSE stage/core-pkg/LICENSE
+          rm -rf stage/core-pkg/test stage/core-pkg/node_modules
+          TARBALL=$(cd stage/core-pkg && npm pack --pack-destination "$PWD/../../stage/wasm-out" | tail -n 1)
+          TAR_PATH="stage/wasm-out/$TARBALL"
+          TAR_LIST=$(tar -tzf "$TAR_PATH")
+          for must in "package/package.json" "package/LICENSE" "package/src/index.js" "package/wasm/xeet_wasm_bg.wasm" "package/wasm/fonts/packs.json"; do
+            echo "$TAR_LIST" | grep -Fxq "$must" || { echo "::error::@xeet/core tarball missing $must"; exit 1; }
           done
-          ls -l dist/tarballs
-      - name: Create the release and attach the tarballs
-        if: github.ref_type == 'tag'
+          if echo "$TAR_LIST" | grep -Eq '^package/test/'; then
+            echo "::error::@xeet/core tarball unexpectedly contains test/"
+            exit 1
+          fi
+          sha256sum "$TAR_PATH" | awk '{print $1}' > "stage/wasm-out/tarball.sha256"
+          mv "$TAR_PATH" "stage/wasm-out/xeet-core.tgz"
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: core-wasm
+          path: stage/wasm-out
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    name: Attest, release & publish via OIDC
+    needs: [verify, build, wasm]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: release
+    permissions:
+      contents: write # Create GitHub Release and upload verified tarballs + SHA256SUMS.txt
+      id-token: write # Mint OIDC token for npm Trusted Publishing and Sigstore signing
+      attestations: write # Record GitHub Artifact Attestations for release tarballs
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "24"
+          package-manager-cache: false
+
+      # Reads artifacts strictly from the current workflow run (`run-id` omitted).
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          path: artifacts
+
+      - name: Verify artifact digests, cross-OS determinism, and packed CLI layout
+        env:
+          VERSION: ${{ needs.verify.outputs.version }}
+        run: |
+          npm --version
+          node <<'NODE'
+          const crypto = require("node:crypto");
+          const fs = require("node:fs");
+          const path = require("node:path");
+          const platforms = [
+            ["darwin-arm64", "xeet", true],
+            ["darwin-x64", "xeet", true],
+            ["linux-x64", "xeet", true],
+            ["linux-arm64", "xeet", true],
+            ["win32-x64", "xeet.exe", true],
+            ["win32-arm64", "xeet.exe", false],
+          ];
+          const renderHashes = new Map();
+          for (const [plat, exe, hasRender] of platforms) {
+            const dir = path.join("artifacts", "cli-" + plat);
+            const binSha = crypto.createHash("sha256").update(fs.readFileSync(path.join(dir, exe))).digest("hex");
+            const expected = fs.readFileSync(path.join(dir, "binary.sha256"), "utf8").trim();
+            if (binSha !== expected) throw new Error(plat + " binary digest mismatch");
+            if (hasRender) {
+              renderHashes.set(plat, fs.readFileSync(path.join(dir, "render.sha256"), "utf8").trim());
+            }
+          }
+          const coreSha = crypto.createHash("sha256").update(fs.readFileSync("artifacts/core-wasm/xeet-core.tgz")).digest("hex");
+          const expectedCore = fs.readFileSync("artifacts/core-wasm/tarball.sha256", "utf8").trim();
+          if (coreSha !== expectedCore) throw new Error("@xeet/core tarball digest mismatch");
+          renderHashes.set("wasm", fs.readFileSync("artifacts/core-wasm/render.sha256", "utf8").trim());
+
+          const unique = new Set(renderHashes.values());
+          for (const [target, h] of renderHashes) console.log("determinism " + target + ": " + h);
+          if (unique.size !== 1) {
+            throw new Error("cross-platform PNG determinism check failed: " + JSON.stringify([...renderHashes]));
+          }
+          console.log("All " + renderHashes.size + " platforms + WASM produced byte-identical PNGs");
+          NODE
+
+          chmod +x artifacts/cli-darwin-arm64/xeet artifacts/cli-darwin-x64/xeet \
+            artifacts/cli-linux-x64/xeet artifacts/cli-linux-arm64/xeet
+          node tools/ship/package-cli.mjs \
+            --bin darwin-arm64=artifacts/cli-darwin-arm64/xeet \
+            --bin darwin-x64=artifacts/cli-darwin-x64/xeet \
+            --bin linux-x64=artifacts/cli-linux-x64/xeet \
+            --bin linux-arm64=artifacts/cli-linux-arm64/xeet \
+            --bin win32-x64=artifacts/cli-win32-x64/xeet.exe \
+            --bin win32-arm64=artifacts/cli-win32-arm64/xeet.exe \
+            --out dist/npm
+
+          mkdir -p dist/release
+          cp artifacts/core-wasm/xeet-core.tgz "dist/release/xeet-core-${VERSION}.tgz"
+          PACK_DEST="$PWD/dist/release"
+          for dir in dist/npm/cli-* dist/npm/cli; do
+            ( cd "$dir" && npm pack --pack-destination "$PACK_DEST" >/dev/null )
+          done
+
+          SMOKE_DIR=$(mktemp -d)
+          mkdir -p "$SMOKE_DIR/node_modules/@xeet/cli" "$SMOKE_DIR/node_modules/@xeet/cli-linux-x64"
+          tar -xzf "dist/release/xeet-cli-${VERSION}.tgz" -C "$SMOKE_DIR/node_modules/@xeet/cli" --strip-components=1
+          tar -xzf "dist/release/xeet-cli-linux-x64-${VERSION}.tgz" -C "$SMOKE_DIR/node_modules/@xeet/cli-linux-x64" --strip-components=1
+          (
+            cd "$SMOKE_DIR"
+            echo '{"text":"npm shim smoke 🚀 日本語 𝗯𝗼𝗹𝗱"}' | node ./node_modules/@xeet/cli/bin/xeet.js render - -o out.png
+            test -s out.png
+          )
+          rm -rf "$SMOKE_DIR"
+
+          ( cd dist/release && sha256sum ./*.tgz | sed 's| \./| |' > SHA256SUMS.txt )
+          cat dist/release/SHA256SUMS.txt
+
+      - name: Attest build provenance for release tarballs
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2.4.0
+        with:
+          subject-path: "dist/release/*.tgz"
+
+      - name: Create GitHub Release and upload tarballs + SHA256SUMS.txt
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
         run: |
-          # Refreshes an existing release rather than failing on a re-run.
-          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 ||
-            gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --generate-notes
-          gh release upload "$GITHUB_REF_NAME" dist/tarballs/*.tgz --clobber
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" dist/release/*.tgz dist/release/SHA256SUMS.txt --clobber
+          else
+            gh release create "$TAG" dist/release/*.tgz dist/release/SHA256SUMS.txt \
+              --verify-tag \
+              --title "$TAG" \
+              --generate-notes
+          fi
 
-      # --- Manual publish ----------------------------------------------------
-      # The core package ships the WASM module, so it needs the toolchain and
-      # the vendored X assets the binary builds already had.
-      - name: Toolchain for the WASM module
-        if: github.event_name == 'workflow_dispatch' && inputs.publish
-        uses: dtolnay/rust-toolchain@stable
-        with: { targets: wasm32-unknown-unknown }
-      - name: Install wasm-bindgen (must match the crate pin)
-        if: github.event_name == 'workflow_dispatch' && inputs.publish
-        uses: taiki-e/install-action@v2
-        with: { tool: wasm-bindgen@0.2.130 }
-      - name: Build the WASM module for the core package
-        if: github.event_name == 'workflow_dispatch' && inputs.publish
+      - name: Publish verified tarballs to npm via OIDC Trusted Publishing
         env:
-          XEET_VENDOR_URL: ${{ secrets.XEET_VENDOR_URL }}
-          XEET_VENDOR_TOKEN: ${{ secrets.XEET_VENDOR_TOKEN }}
+          VERSION: ${{ needs.verify.outputs.version }}
         run: |
-          node tools/ship/fetch-vendor.mjs
-          node tools/ship/build-wasm.mjs
-      - name: Stage @xeet/core
-        if: github.event_name == 'workflow_dispatch' && inputs.publish
-        run: |
-          rm -rf dist/npm/core
-          cp -R packages/xeet dist/npm/core
-          cp LICENSE dist/npm/core/LICENSE
-          rm -rf dist/npm/core/test dist/npm/core/node_modules
-          node -p 'require("./dist/npm/core/package.json").name + "@" + require("./dist/npm/core/package.json").version'
-      - name: Publish to npm
-        if: github.event_name == 'workflow_dispatch' && inputs.publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: |
-          test -n "$NODE_AUTH_TOKEN" || { echo "::error::NPM_TOKEN is not set"; exit 1; }
-          # Publish @xeet/core first, then @xeet/cli-* platform packages, then @xeet/cli.
-          ( cd dist/npm/core && npm publish --access public )
-          for dir in dist/npm/cli-*; do ( cd "$dir" && npm publish --access public ); done
-          ( cd dist/npm/cli && npm publish --access public )
+          PACKAGES=(
+            "@xeet/core:dist/release/xeet-core-${VERSION}.tgz"
+            "@xeet/cli-darwin-arm64:dist/release/xeet-cli-darwin-arm64-${VERSION}.tgz"
+            "@xeet/cli-darwin-x64:dist/release/xeet-cli-darwin-x64-${VERSION}.tgz"
+            "@xeet/cli-linux-arm64:dist/release/xeet-cli-linux-arm64-${VERSION}.tgz"
+            "@xeet/cli-linux-x64:dist/release/xeet-cli-linux-x64-${VERSION}.tgz"
+            "@xeet/cli-win32-arm64:dist/release/xeet-cli-win32-arm64-${VERSION}.tgz"
+            "@xeet/cli-win32-x64:dist/release/xeet-cli-win32-x64-${VERSION}.tgz"
+            "@xeet/cli:dist/release/xeet-cli-${VERSION}.tgz"
+          )
+          for entry in "${PACKAGES[@]}"; do
+            pkg="${entry%%:*}"
+            tgz="${entry#*:}"
+            if npm view "${pkg}@${VERSION}" version --registry https://registry.npmjs.org >/dev/null 2>&1; then
+              echo "Skipping ${pkg}@${VERSION} (already published)"
+              continue
+            fi
+            echo "Publishing ${pkg}@${VERSION} from ${tgz}…"
+            npm publish "$tgz" --access public --registry https://registry.npmjs.org
+          done

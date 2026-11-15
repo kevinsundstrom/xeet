@@ -1,15 +1,12 @@
 #!/usr/bin/env node
-// Vercel CI test gate + production static/WASM builder.
+// Vercel CI task runner + production WebAssembly/Next.js builder.
 //
-// Runs on every deployment and pull request on Vercel (`vercel.json`
-// `buildCommand`):
-//   1. Bootstraps Rust (`wasm32-unknown-unknown`) + prebuilt `wasm-bindgen`
-//      into `node_modules/.cache/xeet-ci/` (cached across Vercel builds).
-//   2. Runs the CI verification gates: contract, unsafe, golden stamps, full
-//      Rust workspace test suite (`cargo test --profile fast --workspace`),
-//      WASM compilation, and Node/API integration tests. Any failure aborts
-//      the build and fails the Vercel CI check.
-//   3. Writes `dist/` (`web/` + `dist/wasm/` browser WebAssembly bundle).
+// Driven as discrete cached Turborepo tasks (`turbo.json`):
+//   - `//#ci:gates`     (`ci`)                  contract, `#![forbid(unsafe_code)]`, golden stamps, workflow lint
+//   - `//#ci:rust-test` (`ci`, 8 vCPU, Ubuntu)  rustfmt, clippy, workspace tests, Chrome layout & raster parity
+//   - `//#ci:wasm`      (8 vCPU)                wasm32-unknown-unknown + SHA-256 verified wasm-bindgen + font packs
+//   - `//#ci:pkg-test`  (`ci`)                  Node/WASM integration & lazy font-pack tests
+//   - `//#ci:site`      (Vercel deployment)     stages `/wasm/<hash>` from `//#ci:wasm` and builds Next.js
 
 import { execFileSync, execSync } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -17,9 +14,9 @@ import {
   cpSync,
   existsSync,
   mkdirSync,
+  mkdtempSync,
   readFileSync,
   readdirSync,
-  renameSync,
   rmSync,
   statSync,
   writeFileSync,
@@ -30,7 +27,13 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const WASM_BINDGEN_VERSION = "0.2.130";
-const IS_VERCEL = process.env.VERCEL === "1";
+const WASM_BINDGEN_SHA256 = {
+  "x86_64-unknown-linux-musl": "9687f3bb551b9f66f37ed32a40d7913a00f7962db653054e56857bc306c3227f",
+};
+const ACTIONLINT_VERSION = "1.7.12";
+const ACTIONLINT_LINUX_X64_SHA256 = "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8";
+
+const IS_VERCEL = Boolean(process.env.VERCEL || process.env.VERCEL_CI);
 const SKIP_TESTS = process.argv.includes("--skip-tests");
 
 const CACHE_DIR = join(ROOT, "node_modules", ".cache", "xeet-ci");
@@ -42,7 +45,6 @@ mkdirSync(BIN_DIR, { recursive: true });
 
 function buildEnv() {
   const extraPaths = [BIN_DIR, join(CARGO_HOME, "bin")];
-  // Also prepend active rustup toolchain bin if present so Homebrew cargo never shadows it.
   try {
     const out = execFileSync("rustup", ["toolchain", "list", "-v"], {
       encoding: "utf8",
@@ -80,7 +82,11 @@ function hasCommand(cmd, args, env) {
   }
 }
 
-function ensureRust(env) {
+function sha256File(path) {
+  return createHash("sha256").update(readFileSync(path)).digest("hex");
+}
+
+function ensureRust(env, { needLintComponents = false } = {}) {
   const hasCargo = hasCommand("cargo", ["--version"], env);
   let hasWasmTarget = false;
   if (hasCargo) {
@@ -89,17 +95,29 @@ function ensureRust(env) {
       hasWasmTarget = existsSync(join(sysroot, "lib", "rustlib", "wasm32-unknown-unknown", "lib"));
     } catch {}
   }
-  if (hasCargo && hasWasmTarget) return buildEnv();
 
   if (!hasCargo) {
+    const components = needLintComponents ? " --component rustfmt,clippy" : "";
     console.log("ci: installing minimal Rust stable + wasm32-unknown-unknown into build cache…");
     execSync(
-      "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain stable --target wasm32-unknown-unknown --no-modify-path",
+      `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain stable --target wasm32-unknown-unknown${components} --no-modify-path`,
       { stdio: "inherit", env },
     );
-  } else {
+    return buildEnv();
+  }
+
+  const next = buildEnv();
+  if (!hasWasmTarget) {
     console.log("ci: adding wasm32-unknown-unknown target…");
-    execFileSync("rustup", ["target", "add", "wasm32-unknown-unknown"], { stdio: "inherit", env });
+    execFileSync("rustup", ["target", "add", "wasm32-unknown-unknown"], { stdio: "inherit", env: next });
+  }
+  if (needLintComponents) {
+    if (!hasCommand("cargo", ["fmt", "--version"], next)) {
+      execFileSync("rustup", ["component", "add", "rustfmt"], { stdio: "inherit", env: next });
+    }
+    if (!hasCommand("cargo", ["clippy", "--version"], next)) {
+      execFileSync("rustup", ["component", "add", "clippy"], { stdio: "inherit", env: next });
+    }
   }
   return buildEnv();
 }
@@ -128,11 +146,47 @@ function ensureWasmBindgen(env) {
   const slug = `wasm-bindgen-${WASM_BINDGEN_VERSION}-${triple}`;
   const url = `https://github.com/rustwasm/wasm-bindgen/releases/download/${WASM_BINDGEN_VERSION}/${slug}.tar.gz`;
   console.log(`ci: fetching prebuilt ${slug}…`);
-  execSync(`curl -fsSL "${url}" | tar -xz -C "${BIN_DIR}" --strip-components=1 "${slug}/wasm-bindgen"`, {
-    stdio: "inherit",
-    env,
-  });
+  const scratch = mkdtempSync(join(CACHE_DIR, "wbg."));
+  const archive = join(scratch, `${slug}.tar.gz`);
+  try {
+    execFileSync("curl", ["-fsSL", url, "-o", archive], { stdio: "inherit", env });
+    const expected = WASM_BINDGEN_SHA256[triple];
+    if (expected) {
+      const actual = sha256File(archive);
+      if (actual !== expected) {
+        throw new Error(`wasm-bindgen SHA-256 mismatch: expected ${expected}, got ${actual}`);
+      }
+    }
+    execFileSync("tar", ["-xzf", archive, "-C", BIN_DIR, "--strip-components=1", `${slug}/wasm-bindgen`], {
+      stdio: "inherit",
+      env,
+    });
+  } finally {
+    rmSync(scratch, { recursive: true, force: true });
+  }
   env.WASM_BINDGEN = join(BIN_DIR, "wasm-bindgen");
+}
+
+function ensureActionlint(env) {
+  const local = join(BIN_DIR, "actionlint");
+  if (hasCommand("actionlint", ["-version"], env)) return "actionlint";
+  if (existsSync(local)) return local;
+  if (platform() !== "linux" || arch() !== "x64") return null;
+
+  const url = `https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz`;
+  const scratch = mkdtempSync(join(CACHE_DIR, "al."));
+  const archive = join(scratch, "actionlint.tar.gz");
+  try {
+    execFileSync("curl", ["-fsSL", url, "-o", archive], { stdio: "inherit", env });
+    const actual = sha256File(archive);
+    if (actual !== ACTIONLINT_LINUX_X64_SHA256) {
+      throw new Error(`actionlint SHA-256 mismatch: expected ${ACTIONLINT_LINUX_X64_SHA256}, got ${actual}`);
+    }
+    execFileSync("tar", ["-xzf", archive, "-C", BIN_DIR, "actionlint"], { stdio: "inherit", env });
+  } finally {
+    rmSync(scratch, { recursive: true, force: true });
+  }
+  return local;
 }
 
 function step(label, fn) {
@@ -142,25 +196,17 @@ function step(label, fn) {
   console.log(`✓ ${label} (${((Date.now() - t0) / 1000).toFixed(1)}s)`);
 }
 
-// `--only <stage>` runs one stage; turbo.json runs each as its own cached task,
-// so a deploy that changed only web/ restores the module and skips Rust
-// entirely. Without `--only`, every stage runs in order (a local full build).
 const STAGES = ["gates", "rust-test", "wasm", "pkg-test", "site"];
 const onlyAt = process.argv.indexOf("--only");
 const ONLY = onlyAt >= 0 ? process.argv[onlyAt + 1] : null;
-if (ONLY && !STAGES.includes(ONLY)) {
-  console.error(`unknown stage ${ONLY}; expected one of ${STAGES.join(", ")}`);
+if (ONLY && !STAGES.includes(ONLY) && ONLY !== "stage-wasm") {
+  console.error(`unknown stage ${ONLY}; expected one of ${STAGES.join(", ")}, stage-wasm`);
   process.exit(2);
 }
 const runs = (stage) => (ONLY ? ONLY === stage : !(SKIP_TESTS && ["gates", "rust-test", "pkg-test"].includes(stage)));
 
 let env = buildEnv();
-/**
- * Turbo runs the rust-test and wasm stages in parallel, and on a fresh cache
- * both would install the toolchain into the same directory at once. A
- * directory is created atomically, so it serves as the lock: one stage
- * installs, the other waits and then finds it installed.
- */
+
 function withToolchainLock(fn) {
   const lock = join(CACHE_DIR, "toolchain.lock");
   const started = Date.now();
@@ -170,7 +216,6 @@ function withToolchainLock(fn) {
       break;
     } catch (error) {
       if (error.code !== "EEXIST") throw error;
-      // A lock older than 15 minutes is from a killed build.
       if (Date.now() - statSync(lock).mtimeMs > 15 * 60_000) {
         rmSync(lock, { recursive: true, force: true });
         continue;
@@ -186,26 +231,80 @@ function withToolchainLock(fn) {
   }
 }
 
-// Only the stages that compile Rust need the toolchain.
 if (runs("rust-test") || runs("wasm")) {
   env = withToolchainLock(() => {
-    const next = ensureRust(env);
-    ensureWasmBindgen(next);
+    const next = ensureRust(env, { needLintComponents: runs("rust-test") });
+    if (runs("wasm")) ensureWasmBindgen(next);
     return next;
   });
 }
 
 if (runs("gates")) {
-  step("Contract, unsafe & golden-stamp gates", () => {
+  step("Contract, unsafe, golden-stamp & workflow gates", () => {
+    for (const required of ["tests/golden/text.json", "tests/golden/e2e.json", "assets/vendor/fonts/manifest.json"]) {
+      if (!existsSync(join(ROOT, required))) {
+        throw new Error(`missing required repository input: ${required}`);
+      }
+    }
     execFileSync("node", ["tools/ship/check-contract.mjs"], { cwd: ROOT, stdio: "inherit", env });
     execFileSync("node", ["tools/ship/check-unsafe.mjs"], { cwd: ROOT, stdio: "inherit", env });
     execFileSync("node", ["tools/ship/golden-stamp.mjs", "--check"], { cwd: ROOT, stdio: "inherit", env });
+    const actionlint = ensureActionlint(env);
+    if (actionlint) {
+      execFileSync(actionlint, ["-color"], { cwd: ROOT, stdio: "inherit", env });
+    }
   });
 }
 
 if (runs("rust-test")) {
-  step("Rust workspace test suite (xeet-core, xeet-text, xeet-resolve, xeet-wasm, iconic_posts)", () => {
+  step("Rust fmt, clippy, workspace tests, layout & raster parity", () => {
+    execFileSync("cargo", ["fmt", "--all", "--", "--check"], { cwd: ROOT, stdio: "inherit", env });
+    execFileSync(
+      "cargo",
+      [
+        "clippy",
+        "--profile",
+        "fast",
+        "--workspace",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings",
+        "-A",
+        "clippy::too_many_arguments",
+        "-A",
+        "clippy::field_reassign_with_default",
+        "-A",
+        "clippy::neg_cmp_op_on_partial_ord",
+        "-A",
+        "clippy::self_named_constructors",
+        "-A",
+        "clippy::manual_noop_waker",
+        "-A",
+        "clippy::while_let_loop",
+        "-A",
+        "clippy::unnecessary_get_then_check",
+      ],
+      { cwd: ROOT, stdio: "inherit", env },
+    );
     execFileSync("cargo", ["test", "--profile", "fast", "--workspace"], {
+      cwd: ROOT,
+      stdio: "inherit",
+      env,
+    });
+    execFileSync("cargo", ["build", "--profile", "fast", "--bin", "xeet"], {
+      cwd: ROOT,
+      stdio: "inherit",
+      env,
+    });
+    const targetRoot = env.CARGO_TARGET_DIR ?? join(ROOT, "target");
+    const xeetBin = join(targetRoot, "fast", platform() === "win32" ? "xeet.exe" : "xeet");
+    execFileSync("node", ["tools/ship/parity-check.mjs"], {
+      cwd: ROOT,
+      stdio: "inherit",
+      env: { ...env, XEET_BIN: xeetBin },
+    });
+    execFileSync("cargo", ["run", "--profile", "fast", "--example", "ship_raster_check"], {
       cwd: ROOT,
       stdio: "inherit",
       env,
