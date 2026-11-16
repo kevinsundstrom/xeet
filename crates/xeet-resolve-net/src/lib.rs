@@ -28,8 +28,10 @@
 
 #![forbid(unsafe_code)]
 
+use std::collections::HashMap;
 use std::io::Read;
-use std::net::{IpAddr, ToSocketAddrs};
+use std::net::{IpAddr, SocketAddr, ToSocketAddrs};
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use xeet_resolve::fetch::{
@@ -38,8 +40,52 @@ use xeet_resolve::fetch::{
 
 /// The default host: one `ureq` agent (connection reuse is off anyway — the
 /// resolver sends `connection: close` — but the agent carries the TLS config).
+///
+/// The addresses [`Lookup::lookup`] returned for a host are the ones the agent
+/// connects to for that host: `lookup` records them and the agent's resolver
+/// reads them back, so the address the library validated as public is the
+/// address the socket opens to. Without that, a host whose DNS answers
+/// differently on the second query (rebinding) passed validation and then
+/// connected somewhere private.
 pub struct Host {
     agent: ureq::Agent,
+    pinned: Arc<Mutex<HashMap<String, Vec<IpAddr>>>>,
+}
+
+/// `ureq`'s resolver: the pinned addresses for a host the library has looked
+/// up, else the system resolver (a fetch the library did not validate first).
+struct Pinned(Arc<Mutex<HashMap<String, Vec<IpAddr>>>>);
+
+impl ureq::Resolver for Pinned {
+    fn resolve(&self, netloc: &str) -> std::io::Result<Vec<SocketAddr>> {
+        let (host, port) = match netloc.rsplit_once(':') {
+            Some((h, p)) => (
+                h.trim_start_matches('[').trim_end_matches(']'),
+                p.parse::<u16>().map_err(|_| {
+                    std::io::Error::new(
+                        std::io::ErrorKind::InvalidInput,
+                        format!("bad port in {netloc:?}"),
+                    )
+                })?,
+            ),
+            None => (netloc, 443),
+        };
+        // A poisoned lock means a thread panicked while holding it; the map is
+        // still the map, so read it rather than fall back to an unpinned lookup.
+        let pinned = self
+            .0
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .get(&host.to_ascii_lowercase())
+            .cloned();
+        if let Some(addresses) = pinned {
+            return Ok(addresses
+                .into_iter()
+                .map(|ip| SocketAddr::new(ip, port))
+                .collect());
+        }
+        Ok(netloc.to_socket_addrs()?.collect())
+    }
 }
 
 impl Default for Host {
@@ -50,15 +96,17 @@ impl Default for Host {
 
 impl Host {
     pub fn new() -> Host {
+        let pinned: Arc<Mutex<HashMap<String, Vec<IpAddr>>>> = Arc::default();
         let agent = ureq::AgentBuilder::new()
             // The library owns the chain; see the module docs.
             .redirects(0)
+            .resolver(Pinned(Arc::clone(&pinned)))
             // A per-request timeout is set from the request's own budget; this
             // is the backstop for a host that ignores it.
             .timeout(Duration::from_secs(30))
             .user_agent("xeet-resolve")
             .build();
-        Host { agent }
+        Host { agent, pinned }
     }
 }
 
@@ -130,6 +178,14 @@ impl Lookup for Host {
         if out.is_empty() {
             return Err(LookupError::NoSuchHost(host.to_string()));
         }
+        // What the library validates is what the agent will connect to. The pin
+        // is recorded before the library's address check runs; a host that fails
+        // it is never fetched, and with this blocking host the lookup and the
+        // fetch for one URL run in sequence, so the entry cannot be overtaken.
+        self.pinned
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .insert(host.to_ascii_lowercase(), out.clone());
         Ok(out)
     }
 }
@@ -330,6 +386,61 @@ mod tests {
             sha256_hex(b"The quick brown fox jumps over the lazy dog"),
             "d7a8fbb307d7809469ca9abcb0082e4f8d5651e46d3cdb762d02d0bf37c9e592"
         );
+    }
+
+    #[test]
+    fn the_agent_connects_to_the_addresses_lookup_returned() {
+        // A listener on the loopback address stands in for the public address
+        // `lookup` validated. The name does not resolve anywhere (`.test` is
+        // reserved), so the only way the agent reaches the listener is through
+        // the addresses `lookup` recorded.
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        std::thread::spawn(move || {
+            if let Ok((mut socket, _)) = listener.accept() {
+                let mut request = [0u8; 1024];
+                let _ = socket.read(&mut request);
+                let _ = std::io::Write::write_all(
+                    &mut socket,
+                    b"HTTP/1.1 204 No Content\r\nconnection: close\r\ncontent-length: 0\r\n\r\n",
+                );
+            }
+        });
+        let host = Host::new();
+        // `lookup` on a name the system resolves records what it returned.
+        let looked_up = block_on(host.lookup("localhost")).unwrap().unwrap();
+        assert_eq!(
+            host.pinned
+                .lock()
+                .unwrap()
+                .get("localhost")
+                .map(Vec::as_slice),
+            Some(looked_up.as_slice()),
+            "lookup records its addresses for the agent"
+        );
+        let resolver = Pinned(Arc::clone(&host.pinned));
+        let got = ureq::Resolver::resolve(&resolver, "localhost:80").unwrap();
+        assert_eq!(
+            got,
+            looked_up
+                .iter()
+                .map(|ip| SocketAddr::new(*ip, 80))
+                .collect::<Vec<_>>()
+        );
+        // The agent itself honours the pin: an unresolvable name with a pinned
+        // loopback address reaches the listener.
+        host.pinned
+            .lock()
+            .unwrap()
+            .insert("pinned.test".into(), vec!["127.0.0.1".parse().unwrap()]);
+        let response = host
+            .agent
+            .get(&format!("http://pinned.test:{port}/"))
+            .call()
+            .unwrap();
+        assert_eq!(response.status(), 204);
+        // A bad port is an error, not a silent 443.
+        assert!(ureq::Resolver::resolve(&resolver, "localhost:port").is_err());
     }
 
     #[test]
