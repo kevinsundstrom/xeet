@@ -116,6 +116,8 @@ const pairs = [
   ["max_output_pixels", "output_pixels"],
   ["min_width", "width_min"],
   ["max_width", "width_max"],
+  ["max_label_chars", "label_chars"],
+  ["max_entity_labels", "entity_labels"],
 ];
 for (const [rustName, apiName] of pairs) {
   const r = rustLimits[rustName];
