@@ -139,3 +139,30 @@ fn scales_linearly() {
     println!("scaling: {ratio:.1}x for {scale:.0}x the text");
     assert!(ratio < 4.0 * scale, "scaling looks quadratic: {ratio:.1}x");
 }
+
+/// A long run of non-ASCII label characters followed by a dot and no TLD used to
+/// cost a full label scan per character: ten times the text took a hundred times
+/// the work.
+#[test]
+fn long_non_ascii_label_is_linear() {
+    let time = |n: usize| {
+        let text = format!("{}.zzzz", "あ".repeat(n));
+        let start = std::time::Instant::now();
+        let parsed = xeet_text::parse(&text);
+        assert!(parsed.entities.is_empty());
+        start.elapsed().as_secs_f64()
+    };
+    time(2_000);
+    let (small, large) = (time(2_000).max(1e-4), time(20_000));
+    println!(
+        "non-ASCII label: 2k {:.1} ms, 20k {:.1} ms",
+        small * 1e3,
+        large * 1e3
+    );
+    // Ten times the text, about ten times the work; a label scan per character would be a hundred.
+    assert!(
+        large / small < 40.0,
+        "scaling looks quadratic: {:.0}x for 10x the text",
+        large / small
+    );
+}

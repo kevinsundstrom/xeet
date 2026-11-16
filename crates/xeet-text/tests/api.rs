@@ -170,3 +170,23 @@ fn media_text_is_not_an_entity() {
         vec!["nodejs.org".to_string()]
     );
 }
+
+#[test]
+fn a_url_right_after_a_refused_start_is_still_found() {
+    // The scan skips the rest of a non-ASCII label run only after a label
+    // character it actually tried. A start the preceding-character guard
+    // refused (the `ü` after `@`) was never tried, and a tried start that is not
+    // a label character (an ideographic space) is not part of the run after it;
+    // twitter-text extracts the URL that begins one character later in both.
+    let urls = |text: &str| -> Vec<String> {
+        tt::parse(text)
+            .entities
+            .into_iter()
+            .filter(|e| matches!(e.kind, tt::EntityKind::Url { .. }))
+            .map(|e| e.text)
+            .collect()
+    };
+    assert_eq!(urls("@üü.com"), vec!["ü.com".to_string()]);
+    assert_eq!(urls("@ああ.co.jp"), vec!["co.jp".to_string()]);
+    assert_eq!(urls("中文\u{3000}ü.co.uk"), vec!["ü.co.uk".to_string()]);
+}
