@@ -39,6 +39,6 @@
   ],
   "scripts": {
     "build": "node ../../tools/ship/build-wasm.mjs",
-    "test": "node --test test/xeet.test.js test/fonts.test.js"
+    "test": "node --test test/xeet.test.js test/fonts.test.js test/resolve-host.test.js"
   }
 }
