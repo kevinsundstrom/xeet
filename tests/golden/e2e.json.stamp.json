@@ -1,0 +1,18 @@
+{
+  "golden": "e2e.json",
+  "sha256": "68e35a538c31aba9b78612e814ed1b2904e8a3789a1c3da00af577b234cdfad0",
+  "cases": 159,
+  "generatedAt": "2026-11-11T05:22:10.611Z",
+  "oracle": {
+    "script": "tools/ship/e2e.mjs",
+    "harnessSha256": "2b412c5dacc2afc54871316896536e190c4f65caf3ac583ac9eba94b29011c5d",
+    "chrome": "141.0.7390.37",
+    "chromiumBuild": "1194",
+    "playwright": "1.56.1"
+  },
+  "upstream": {
+    "appVersion": "89824c04747e706b687e3af193963c4d00251b8e",
+    "stylesheetSha256": "10898d069456c3d288cd6b2f8af34a02a9077cb393df4d6bd2ab5b264dbc302d"
+  },
+  "host": "darwin-arm64"
+}

@@ -1,0 +1,257 @@
+{
+  "id": "x-web",
+  "appVersion": "55591fe0f5ae6815fa853ab25bc30b5118d1d017",
+  "verifiedAt": "2026-11-10",
+  "source": {
+    "client": "assets/vendor/upstream/js (see assets/rules.lock.json for hashes)",
+    "corpus": "assets/vendor/capture/payloads.jsonl (270 public posts, 83 accounts)",
+    "spec": "SPEC.md"
+  },
+  "statuses": {
+    "verified": "read from shipped client code that X serves today, or measured on every relevant captured payload",
+    "derived": "measured on a sample of public payloads; the rule is a statistic, not a guarantee",
+    "prior": "industry knowledge or the plan's prior; no evidence from this snapshot. Needs the behavior lab"
+  },
+  "rules": {
+    "length": {
+      "limit": 280,
+      "longPostLimit": 25000,
+      "urlWeight": 23,
+      "status": "verified",
+      "evidence": "twitter-text config v3 (open source); URL weight 23 confirmed by note_tweet payloads whose full_text replaces each URL with a 23-unit t.co link. For the compact payload shape (what the logged-out pages embed), display_text_range and entity indices are code points, not UTF-16; see SPEC.md 'Ranges'."
+    },
+    "longPost": {
+      "cutUnit": "UTF-16 code unit",
+      "boundary": "word",
+      "trimTrailingWhitespace": true,
+      "inlineShowMoreOn": [
+        "web-timeline",
+        "quote"
+      ],
+      "truncateOn": [
+        "web-timeline"
+      ],
+      "status": "derived",
+      "approximate": true,
+      "evidence": "55 posts carry note_tweet; 52 are truncated bodies (visible body 258-281 code points, median 277, p25 273, p75 279). 44 of 52 (84.6%) match 'first 280 code points, back off to the last whitespace, trim end' exactly; 3 of the 8 misses are same-length URL-normalization differences, so 44/49 comparable bodies (89.8%) match. The other 5 differ by 4-9 code points, so the exact server constant or boundary preference is not recovered. Reproduce with node tools/rules/derive.mjs. See SPEC.md 'The long-post cut'.",
+      "unverifiedReason": "Exact cut algorithm (280 vs 281, whitespace class, grapheme vs code point) needs the behavior lab: post long text at the boundary and re-read full_text/note_tweet.",
+      "serverBody": {
+        "field": "Post::longPostBody",
+        "unit": "code points of the authored text",
+        "status": "verified",
+        "evidence": "Captured timeline cells: display_text_range[1] is already X's cut (271, 277, 279, 280, 281 across the corpus) and full_text[..range[1]] is exactly the body the page renders, followed by the media/card t.co. The e2e harness compares against that text; rules uses it when present and only falls back to the derived 280-code-point cut for a draft.",
+        "unverifiedReason": "The derived cut still cannot reproduce X's exact server constant for a draft: 84.6% exact, 89.8% on comparable bodies."
+      },
+      "detectBy": "note_tweet.is_expandable === true; a short note (is_expandable false) is shown whole with no Show more (3 in the corpus: paulg 2119414341980012850, akirathedon 2118585012677157365, jack 1833951636005552366).",
+      "showMoreElision": {
+        "minDisplayedLength": 200,
+        "maxHiddenRemainder": 140,
+        "unit": "UTF-16 code units of the displayed body and of the note text (JavaScript string length)",
+        "status": "verified",
+        "evidence": "1037d89b, chunk BsiDb726.js (sha256 e46395f6d8bf…): function f expands a cut note when n >= 200 and e.length - n <= 140 (h=200, g=140), where n is the displayed plain text length and e the note text, both JavaScript string lengths (UTF-16). DIdg36-I.js (89824c04) has no gate. The live 55591fe0 bundle (chunk D8W400Me.js, sha256 eee4f108554301e1…) still contains the gate but the live timeline does not apply it: captured post 2120188488628977819 (55591fe0) is shown cut at display_text_range [0,259] with a 'Show more' button, although the note is 356 code points (97 hidden, which 1037d89b would expand). The gate is therefore an allow-list: only 1037d89b expands; unknown/newer versions and drafts show the cut.",
+        "unverifiedReason": "Why 55591fe0 stopped applying the gate is not visible in its code (the function is still shipped). A logged-in home-timeline capture of 2120188488628977819 would settle whether the cell uses a different expansion state.",
+        "enabledForAppVersions": [
+          "1037d89b2e16b39ce3ae53affdf45722259d018f"
+        ]
+      },
+      "cutUnits": 280
+    },
+    "clamp": {
+      "timelineMain": null,
+      "detailMain": null,
+      "quote": 5,
+      "nestedQuote": 2,
+      "profileBio": 3,
+      "cardTitle": 2,
+      "cardDescription": 1,
+      "status": "verified",
+      "evidence": "Server-rendered markup: main tweet text carries no line-clamp class (profile-vercel.html, probe.html); a quoted tweet's text carries line-clamp-5 (profile-vercel.html inline). Client constants WT=5 for tweet content and eT=2 for the nested quote. Clamp class map line-clamp-1..5 in CbDtO_Fz.js."
+    },
+    "clampOverflow": {
+      "test": "scrollHeight > offsetHeight + 1, or for one line scrollWidth > offsetWidth + 1",
+      "button": "Show more",
+      "inlineSeparator": " ",
+      "status": "verified",
+      "evidence": "CbDtO_Fz.js Mpe(): (r.scrollHeight>r.offsetHeight+1||n===1&&r.scrollWidth>r.offsetWidth+1)!==a && o()?.(). DBT-6Eh8.js we(): jsxs(Fragment,{children:[` `,button]}); Te(): className `self-start` below the text for the clamped variant; button label t(`Show more`)."
+    },
+    "displayUrl": {
+      "stripScheme": true,
+      "stripWww": true,
+      "dropQuery": false,
+      "pathUnits": 15,
+      "unit": "utf16",
+      "ellipsis": "…",
+      "trimEndBeforeEllipsis": true,
+      "status": "verified",
+      "evidence": "85/87 entities match 'host minus www + (pathname+search) cut at 15 UTF-16 units + ellipsis' on captured display_url values. The two exceptions: youtu.be/vDjW_dRyKXY?si… (query kept when it fits the same 15-unit budget) and ▲.to (IDN shown in Unicode). Client grapheme truncator jz(e,t) in CbDtO_Fz.js. A captured compact payload's URL entity carries display_url (e.g. bbc.in/4foQRxp) while the text carries t.co/vAuRqIz67b; the page prints the display_url, so Post::links[url].display wins over the computed form (rules::url_display).",
+      "payloadDisplayWins": true
+    },
+    "hiddenRanges": {
+      "leadingMentionsInReply": true,
+      "trailingUrlWhen": [
+        "card",
+        "media",
+        "quote",
+        "article"
+      ],
+      "scanFromEnd": true,
+      "stopAtFirstUnmatchedUrl": true,
+      "status": "verified",
+      "evidence": "Client attachment-range algorithm in _D0BurxE.js: W(text,urls,mediaRange) walks trailing URL/media entities across whitespace from the end; Oe() matches a URL to card.legacy.url, quoted tweet id or article id and returns null otherwise, which stops the walk (je(): if(e===null)return i). Rendering hides only ranges whose attachment is rendered (ck(): t.card?a:null etc. in CbDtO_Fz.js). Range unit: in the compact shape display_text_range[1]=83 lands between the UTF-16 halves of an emoji and a code-point slice reproduces the page's text exactly (e2e: ESPN 2120010545872949671, F1 2119898824810389849); the client slices Array.from(text). Rules maps any incoming UTF-16 boundary that bisects a surrogate up to the next code point.",
+      "corpus": "All 122 posts with a hidden trailing range hide exactly one ' https://t.co/XXXXXXXXXX' (24 code points) and every one of them has media; no captured payload hides a card URL (the card URL is hidden client-side, not via display_text_range).",
+      "payloadRangeUnits": "code points for the compact profile/timeline payload; UTF-16 for the API (legacy) shape",
+      "trailingWhitespace": {
+        "trimBeforeHiddenUrl": "spaces, newlines and other Unicode whitespace",
+        "status": "verified",
+        "evidence": "137 captured posts hide a trailing t.co via display_text_range; in 137 of 137 the range ends after the whitespace that precedes the URL (0 keep it), i.e. X hides that whitespace with the URL. Reproduce with tmp rules statistics over assets/vendor/corpus (SPEC.md §3). For a payload the converter already slices by that range; a draft has to apply the rule itself, otherwise the card or media leaves a blank line before it (e.g. a body ending '… “Show more”.\\n\\nhttps://vercel.com/blog/the-thing').",
+        "draftRule": "When a trailing URL is hidden by an attachment, the hidden range starts at the first whitespace character before it."
+      },
+      "mediaClaimsTcoOnly": {
+        "status": "derived",
+        "evidence": "Every one of the 122 hidden trailing ranges in the corpus is a bare ' https://t.co/XXXXXXXXXX' appended for media, and no media post keeps a visible t.co at the end. A URL with any other host on a media post stays visible: media outranks a card, so nothing claims it (SPEC.md §6, media_beats_a_link_card).",
+        "unverifiedReason": "A draft that pastes a t.co link and attaches media: X may instead fetch a card for the pasted link. Not in the corpus."
+      }
+    },
+    "leadingMentions": {
+      "hideIn": [
+        "web-timeline",
+        "web-detail"
+      ],
+      "dotPrefixEscapes": true,
+      "status": "prior",
+      "evidence": "X hides the leading mentions of a reply; the reply-ness is server state, not a text shape. Captured post @levelsio/2119915360849727842 opens with '@TermiusHQ' and shows it, and its display_text_range starts at 0. Rules therefore hides only when Post::reply_to is set. The server marks a reply's body with display_text_range[0] > 0.",
+      "unverifiedReason": "Needs the behavior lab: reply with 1-3 leading mentions, with and without a .@ prefix, and read display_text_range.",
+      "requiresReplyFact": true
+    },
+    "attachmentPrecedence": {
+      "order": [
+        "poll",
+        "media",
+        "quote",
+        "card"
+      ],
+      "mediaBeatsCard": true,
+      "quoteBeatsCard": true,
+      "pollBeatsCard": true,
+      "status": "verified",
+      "evidence": "Corpus: 270 payloads, no post carries both media and a card (0 of 78 card posts have media; 0 of 124 media posts have a card). X's composer cannot combine a poll with media. Quote+media is allowed by X but the model exposes one attachment slot; precedence order is documented in SPEC.md.",
+      "corpusNote": "A card post's full_text ends with the card's t.co URL and display_text_range includes it; the client hides it via the card attachment range, not the server."
+    },
+    "cardLink": {
+      "pick": "last",
+      "status": "prior",
+      "evidence": "Client hides the URL that matches card.legacy.url and stops scanning at the first trailing non-matching URL, so the card is bound to one URL. Which URL X's crawler picks is server-side; the corpus has only single-URL card posts (61/61).",
+      "unverifiedReason": "Needs the behavior lab: put the same card-worthy link at start, middle and end, and with two different card links."
+    },
+    "cardDismissal": {
+      "scope": "whole post",
+      "marker": "tombstone://card",
+      "clearedWhen": "the joined list of URLs in the draft text changes",
+      "status": "verified",
+      "evidence": "Client composer slice: B5hEoqI4.js y(): g=`tombstone://card`, _=(0,o.i)(`cardPreview`,{dismissed:!1}); f(): getSendPayload(e){return _.get(e).dismissed?{card_uri:g}:{}}; p(): subscribeSelector(d,...,reset when d changes); d(e) joins url entities with the jetfuelUrl."
+    },
+    "cardTypes": {
+      "recognized": [
+        "summary",
+        "summary_large_image",
+        "player",
+        "app",
+        "unified_card",
+        "broadcast"
+      ],
+      "rendersWhen": "the link has metadata with a card type and no higher-priority attachment is present",
+      "status": "verified",
+      "evidence": "Card name dispatch: DIdg36-I.js summary card parser (variant `image-overlay` only for summary_large_image with an image, else `thumbnail-detail`); CbDtO_Fz.js card_name from card.legacy.name; unified card parser keyed by name `unified_card`. Corpus card names: summary_large_image 65, summary 4, 745291183405076480:broadcast 2 (logged-out public posts; no ad or player cards captured)."
+    },
+    "replyContext": {
+      "detailShowsFullThread": true,
+      "status": "prior",
+      "evidence": "Post-detail markup (probe.html, post-vercel.html) shows the main text without a clamp; full long text lives in note_tweet.",
+      "unverifiedReason": "Thread and reply ordering are outside this ruleset; the frame renders one post."
+    },
+    "formatting": {
+      "relativeTime": {
+        "nowLabel": "Now",
+        "seconds": "Ns below 60s",
+        "minutes": "Nm below 3600s",
+        "hours": "Nh below 86400s, with ' Nm' appended unless minutes are 0 or precision is Hours",
+        "days": "same calendar year: 'MMM d' (e.g. Nov 5); otherwise 'MMM d, yyyy'",
+        "status": "verified",
+        "evidence": "CbDtO_Fz.js s({timestamp,lang,timeZone,nowLabel,precision}): p<60 m(h,p); p<3600 m(g,floor(p/60)); p<86400 hours with `${e} ${m(g,t)}` unless precision===`Hours`||t===0; else Intl month short/day, adding year only when the year differs."
+      },
+      "counts": {
+        "actionRow": {
+          "algorithm": "compact; maximumFractionDigits = 1 unless that rendering is at least 5 characters long, then 0",
+          "initialFractionDigits": 1,
+          "longThresholdCharacters": 5,
+          "fallbackFractionDigits": 0,
+          "roundingMode": "trunc",
+          "locale": "en",
+          "status": "verified",
+          "evidence": "B8JKwKas.js sha256 95b6e2a00ef2968b... engagement-button-Oyb-Yev6: a(e,t){ ... new Intl.NumberFormat(t,f).format(e).length>=5?0:1 }, f={maximumFractionDigits:1,notation:`compact`,roundingMode:`trunc`}, and the pill renders AnimatedCount with format:{...f,maximumFractionDigits:a(count,language)}. 464 aria-label/rendered pairs in the captured markup confirm it (frame/numbers.rs test table): 1938->1.9K, 1000->1K, 12490->12K, 987654->987K, 4082915->4M, 37047269->37M."
+        },
+        "views": {
+          "algorithm": "plain grouped below 10000; compact with maximumFractionDigits 1 and trunc rounding above",
+          "plainBelow": 10000,
+          "maximumFractionDigits": 1,
+          "roundingMode": "trunc",
+          "status": "verified",
+          "evidence": "29V4YPN-.js sha256 10b603cd9f5fe610... view-count-utils-Zx47M6cA: s=1e4, c={maximumFractionDigits:1,notation:`compact`,roundingMode:`trunc`}; o(e,n) returns {compactCount:e<s?plain:compact, fullCount}. Used by the detail Views label and profile stats (CsKZbcGK.js call sites)."
+        },
+        "memberCount": {
+          "algorithm": "compact with maximumFractionDigits 1 and trunc rounding at every magnitude",
+          "maximumFractionDigits": 1,
+          "roundingMode": "trunc",
+          "status": "verified",
+          "evidence": "CU05W8xc.js sha256 f614b067b07f49d3... format-member-count-qG_2NhH0: new Intl.NumberFormat(t,{maximumFractionDigits:1,notation:`compact`,roundingMode:`trunc`}). Community member counts."
+        },
+        "pollVotes": {
+          "algorithm": "plain grouped integer",
+          "status": "verified",
+          "evidence": "BuK4PrYn.js sha256 d5c933aae139c31c... poll card: new Intl.NumberFormat(a.language) then `{formattedCount} {count, plural, one {vote} other {votes}}`. Poll totals are not abbreviated."
+        }
+      }
+    },
+    "entityLabels": {
+      "source": "Post::entityLabels (payload mention_entities screen_name)",
+      "status": "verified",
+      "evidence": "Captured post elonmusk/2119617455102333206: full_text says 'Grok @Bot', mention_entities[{indices:[44,48],screen_name:'bot'}], and the page prints 'Grok @bot'. Rules prints the server label when the input carries one, otherwise the token as written."
+    },
+    "nestedQuotePreview": {
+      "clamp": 2,
+      "eligibility": {
+        "outerCrowded": "reject when outer.reply_to is set (promoted, mid-conversation and birdwatch state are not in Post)",
+        "missingNestedAuthor": "reject when q2 has no author handle",
+        "selfQuote": "reject when outer.author and q1.author match or q1.author and q2.author match (handles compared case-insensitively, @ trimmed)",
+        "nestedCardOrPoll": "reject when q2 has any link with card metadata, or a poll",
+        "mediaBudget": "(outer renders media, q1 renders media/card/poll, q2 has media) may have at most one true"
+      },
+      "entityRendering": "render-entity-as-text: mention @screen_name, hashtag #text, cashtag $text, timestamp its text, URL displayUrl; the span uses color/size/weight inherit, so entities are plain primary text, not brand links",
+      "mediaThumb": {
+        "size": 64,
+        "onlyFirst": true,
+        "overlayCount": true,
+        "playIconForVideo": true
+      },
+      "status": "verified",
+      "evidence": "55591fe0 chunk dfWSwB9n.js (sha256 d44215ba04fa6bfd…) module nested-quote-preview-SIs_tkfq: functions H(e,t,n), ae(e), I/L/z(q2/q1 media predicates) and ie(q2 card/poll/sensitive veto); clamp ke=2 and renderEntity render-entity-as-text in component ve; entity module B0X1tFzr.js (sha256 e48f50b239fa2cb0…) maps mention/hashtag/cashtag/timestamp to display text, URL to displayUrl, and wraps the span with color:inherit, size:inherit, weight:inherit. The same H, with the same fragment hash eb326beec0968fb72285af4ec33cf74d, is in 89824c04 DIdg36-I.js (8ee525ba…) and 1037d89b BsiDb726.js (e46395f6…): identical code across the three pinned versions. Corpus: all five nested-quote posts are rejected and none of their pages carries the preview markup (w-[3px] rule, rounded-[9px], sr-only Quote): elonmusk 2119812607117062451 (q1 photo + q2 video = two media), NBA 2120015774983008464 and binance 2119655363385659500 (self-quote q1==q2), karpathy 2109361546505966046 (outer==q1), levelsio 2116843791214629021 (outer==q1). The compact payloads do not carry q2's media/text (the client fetches q2 with getNestedQuotePreviewTweet_quoted), so elonmusk's q2 video is only in the lead's evidence, not in our payload copy.",
+      "unverifiedReason": "Promoted/mid-conversation/birdwatch crowding, sensitive-media flags and article/jetfuel attachments are not modeled in Post; only reply_to, card, poll and media are checked. X fetches q2 separately, so a captured profile payload cannot exercise a positive preview."
+    },
+    "embeddedMedia": {
+      "hidesPermalinks": "x.com|twitter.com (www.|mobile.|m.)/<handle|i>/status/<digits>/(video|photo)/<1..4>, any query (?t=…, ?s=20) or trailing slash",
+      "hidesDirectMedia": "video.twimg.com/*; pbs.twimg.com/(media|amplify_video_thumb|ext_tw_video_thumb|tweet_video_thumb)/*",
+      "requires": "Post::media is non-empty (the attachment is Media)",
+      "strips": "a mid-text URL takes one preceding space with it (text[n-1] === ' ' ? n-1 : n); a trailing range trims all preceding whitespace (hiddenRanges.trailingWhitespace)",
+      "leaves": "external links (bit.ly, vercel.com, polygon.com, …), non-media twimg URLs (profile_images, card_img) and /status/<id> links without /video|photo/<n> stay visible",
+      "status": "verified",
+      "evidence": "tU-nr9vs.js sha256 55cb51684c9fe415… module quote-media-toggle-jMLU_r6g function n(e,t): let[n,i]=t,a=e.text[n-1]===' '?n-1:n; r.updateText(e.text.slice(0,a)+e.text.slice(i)). BNn3ozGQ.js sha256 60ad8cfa33fd2665… modules post-media-menu-item-jECN8x_w and get-embeddable-media-url-X8kC4tDT: builds /<handle|i>/status/<id>/(video|photo)/<N> from source_status_id_str and expanded_url's /(?:photo|video)/(\\d+)(?:[/?#]|$)/, resolved against https://x.com with the original search and hash; direct media URLs come from media_url_https (video.twimg.com, pbs.twimg.com). Corpus: ESPN.html 2120005259485425936 is a video post whose full_text ends with the server-appended media t.co, hidden by display_text_range; no captured post shows an x.com/twitter.com media permalink or twimg media URL in its text (0 of 288), so external-link parity is untouched.",
+      "unverifiedReason": "A post that already has media and deliberately links another post's media rather than embedding it: the composer embeds on paste, so captured payloads cannot show that state."
+    }
+  },
+  "appVersions": [
+    "55591fe0f5ae6815fa853ab25bc30b5118d1d017",
+    "1037d89b2e16b39ce3ae53affdf45722259d018f",
+    "89824c04747e706b687e3af193963c4d00251b8e",
+    "3e351742fe4f2424674722b87619ee182fff37e8"
+  ]
+}

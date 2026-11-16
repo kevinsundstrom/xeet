@@ -1,0 +1,46 @@
+{
+  "$schema": "https://turborepo.com/schema.json",
+  "globalDependencies": ["Cargo.toml", "Cargo.lock", "pnpm-lock.yaml", "tools/ship/vercel-build.mjs"],
+  "tasks": {
+    "//#ci:gates": {
+      "tags": ["ci"],
+      "inputs": [
+        ".github/workflows/**",
+        "crates/**",
+        "packages/**",
+        "tools/ship/**",
+        "tests/golden/**",
+        "tools/oracle/**",
+        "tools/playground/**"
+      ],
+      "outputs": []
+    },
+    "//#ci:rust-test": {
+      "tags": ["ci", "ci:cpus:8", "ci:os:ubuntu"],
+      "inputs": ["crates/**", "assets/**", "tests/**", "tools/ship/parity-check.mjs"],
+      "outputs": []
+    },
+    "//#ci:wasm": {
+      "tags": ["ci:cpus:8"],
+      "inputs": ["crates/**", "assets/**", "tools/ship/build-wasm.mjs", "tools/ship/build-font-packs.mjs"],
+      "outputs": ["packages/xeet/wasm/**"]
+    },
+    "//#ci:pkg-test": {
+      "dependsOn": ["//#ci:wasm"],
+      "tags": ["ci"],
+      "inputs": [
+        "packages/xeet/src/**",
+        "packages/xeet/test/**",
+        "packages/xeet/package.json",
+        "packages/xeet-cli/**",
+        "tools/ship/package-cli.mjs"
+      ],
+      "outputs": []
+    },
+    "//#ci:site": {
+      "dependsOn": ["//#ci:wasm"],
+      "inputs": ["app/**", "public/og/**", "next.config.mjs", "README.md"],
+      "outputs": [".next/**", "!.next/cache/**", "public/wasm/**"]
+    }
+  }
+}

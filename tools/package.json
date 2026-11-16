@@ -1,0 +1,10 @@
+{
+  "name": "xeet-tools",
+  "private": true,
+  "type": "module",
+  "description": "Development-only tooling for xeet: upstream sync and the Chrome oracle. Never shipped.",
+  "dependencies": {
+    "playwright-core": "1.56.1",
+    "wawoff2": "^2.0.1"
+  }
+}

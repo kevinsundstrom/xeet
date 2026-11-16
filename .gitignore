@@ -1,0 +1,40 @@
+target/
+tmp/
+dist/
+.next/
+/public/wasm/
+.vercel/
+/assets_check
+node_modules/
+
+# Keep temporary playground cache, raw HTML captures, and upstream JS bundles
+# out of git; commit only the runtime build inputs (fonts, icons, tokens,
+# default avatar) in the private repo so git clone, Vercel CI, and GitHub CI
+# build hermetically without external blob storage.
+/assets/vendor/*
+!/assets/vendor/fonts/
+!/assets/vendor/icons.json
+!/assets/vendor/tokens.json
+!/assets/vendor/default-avatar.png
+
+/oracle/out/
+/oracle/.cache/
+*.png.actual
+*.tgz
+.DS_Store
+
+# Wrapper build outputs and generated records
+/packages/xeet/wasm/*.wasm
+/packages/xeet/wasm/*.js
+/packages/xeet/wasm/*.d.ts
+/packages/xeet/wasm/web/
+/packages/xeet/wasm/fonts/
+/packages/xeet/wasm/package.json
+/bench-baseline.json
+/determinism-*.json
+/canary-report.md
+/issue-body.md
+/smoke.png
+.vercel
+.env*
+.turbo

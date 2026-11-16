@@ -1,0 +1,130 @@
+# Weekly X server-behavior canary.
+#
+# Never runs on pull requests. Uses top-level `permissions: {}`, SHA-pinned
+# first-party `actions/*`, and `persist-credentials: false`.
+name: behavior-canary
+
+on:
+  schedule:
+    - cron: "41 6 * * 1" # Mondays, 06:41 UTC
+  workflow_dispatch:
+    inputs:
+      active:
+        description: "Run the active half (posts from the test account)"
+        type: boolean
+        default: false
+
+permissions: {}
+
+concurrency:
+  group: behavior-canary
+  cancel-in-progress: false
+
+jobs:
+  vendor:
+    name: Check vendor store configuration
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      available: ${{ steps.check.outputs.available }}
+    steps:
+      - id: check
+        env:
+          URL: ${{ secrets.XEET_VENDOR_URL }}
+          TOKEN: ${{ secrets.XEET_VENDOR_TOKEN }}
+        run: |
+          if [ -n "$URL" ] && [ -n "$TOKEN" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Upstream assets not configured::XEET_VENDOR_URL and XEET_VENDOR_TOKEN are unset, so behavior-canary is skipped. See docs/CI.md."
+          fi
+
+  passive:
+    name: Passive rules canary
+    needs: vendor
+    if: needs.vendor.outputs.available == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      issues: write # Open or comment on deduplicated rule-drift issues
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+          package-manager-cache: false
+
+      - name: Restore the vendored X assets
+        env:
+          XEET_VENDOR_URL: ${{ secrets.XEET_VENDOR_URL }}
+          XEET_VENDOR_TOKEN: ${{ secrets.XEET_VENDOR_TOKEN }}
+        run: node tools/ship/fetch-vendor.mjs
+
+      - name: Fetch a fresh sample of public posts
+        run: node tools/capture.mjs --budget 200
+
+      - name: Rules canary, offline against the pinned corpus
+        run: node tools/rules/canary.mjs --offline
+
+      - name: Rules canary, against the fresh sample
+        run: node tools/rules/canary.mjs
+
+      - name: File an issue when a rule moved
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          TITLE="Behavior canary failed: an X rule moved"
+          EXISTING=$(gh issue list --state open --search "\"$TITLE\" in:title" --json number --jq '.[0].number // empty')
+          BODY="The weekly canary disagrees with the derived rules. See $RUN_URL. This is a rule change, not a token change, so it needs a person."
+          if [ -n "$EXISTING" ]; then
+            gh issue comment "$EXISTING" --body "$BODY"
+          else
+            gh issue create --title "$TITLE" --body "$BODY"
+          fi
+
+  active:
+    name: Active lab canary
+    needs: vendor
+    if: needs.vendor.outputs.available == 'true' && github.event_name == 'workflow_dispatch' && inputs.active == true && vars.XEET_TEST_ACCOUNT_READY == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment: behavior-lab
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+          package-manager-cache: false
+
+      - name: Restore the vendored X assets
+        env:
+          XEET_VENDOR_URL: ${{ secrets.XEET_VENDOR_URL }}
+          XEET_VENDOR_TOKEN: ${{ secrets.XEET_VENDOR_TOKEN }}
+        run: node tools/ship/fetch-vendor.mjs
+
+      - name: Post, capture, compare, delete
+        env:
+          XEET_TEST_ACCOUNT_HANDLE: ${{ secrets.XEET_TEST_ACCOUNT_HANDLE }}
+          XEET_TEST_ACCOUNT_TOKEN: ${{ secrets.XEET_TEST_ACCOUNT_TOKEN }}
+        run: |
+          if [ ! -f tools/rules/lab.mjs ]; then
+            echo "::error::tools/rules/lab.mjs is not implemented"
+            exit 1
+          fi
+          if [ -z "$XEET_TEST_ACCOUNT_TOKEN" ]; then
+            echo "::error::no test account configured; see docs/CI.md"
+            exit 1
+          fi
+          node tools/rules/lab.mjs --matrix reduced --cleanup

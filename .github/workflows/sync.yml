@@ -1,0 +1,185 @@
+# Upstream X sync workflow (manual or dispatched by upstream-watch.yml).
+#
+# Never runs on pull requests. Uses top-level `permissions: {}`, SHA-pinned
+# first-party `actions/*`, `persist-credentials: false`, and GitHub's signed
+# GraphQL `createCommitOnBranch` mutation instead of `git push`.
+name: sync
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Run every step but do not open a pull request or an issue"
+        type: boolean
+        default: false
+
+permissions: {}
+
+concurrency:
+  group: sync
+  cancel-in-progress: false
+
+jobs:
+  vendor:
+    name: Check vendor store configuration
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      available: ${{ steps.check.outputs.available }}
+    steps:
+      - id: check
+        env:
+          URL: ${{ secrets.XEET_VENDOR_URL }}
+          TOKEN: ${{ secrets.XEET_VENDOR_TOKEN }}
+        run: |
+          if [ -n "$URL" ] && [ -n "$TOKEN" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Upstream assets not configured::XEET_VENDOR_URL and XEET_VENDOR_TOKEN are unset, so sync is skipped. See docs/CI.md."
+          fi
+
+  sync:
+    name: Sync upstream X tokens
+    needs: vendor
+    if: needs.vendor.outputs.available == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    permissions:
+      contents: write # Create signed token-port branch commit via GraphQL createCommitOnBranch
+      issues: write # Open repair-brief issue when gates fail on structural upstream changes
+      pull-requests: write # Open token-port PR from signed sync branch
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+          package-manager-cache: false
+
+      - name: Ensure Rust toolchain
+        run: |
+          rustup toolchain install stable --profile minimal --component rustfmt,clippy --no-self-update
+          rustup default stable
+
+      - name: Snapshot upstream
+        run: node tools/sync-upstream.mjs
+
+      - name: Upload the snapshot to the private store
+        env:
+          XEET_VENDOR_PUT_URL: ${{ secrets.XEET_VENDOR_PUT_URL }}
+          XEET_VENDOR_PUT_TOKEN: ${{ secrets.XEET_VENDOR_PUT_TOKEN }}
+        run: |
+          if [ -z "$XEET_VENDOR_PUT_URL" ]; then
+            echo "::error::no store configured for upload (XEET_VENDOR_PUT_URL); see docs/CI.md"
+            exit 1
+          fi
+          node tools/ship/publish-vendor.mjs
+
+      - name: Regenerate tokens and component skeletons
+        run: |
+          node tools/extract-tokens.mjs
+          node tools/oracle/replica-fixtures.mjs
+
+      - name: Fingerprint the extracted results
+        id: fingerprint
+        run: |
+          node -e '
+            const { createHash } = require("node:crypto");
+            const { readFileSync, existsSync } = require("node:fs");
+            const h = createHash("sha256");
+            for (const f of ["crates/xeet-core/src/tokens.rs", "assets/upstream.lock.json"]) {
+              if (existsSync(f)) { h.update(f); h.update(readFileSync(f)); }
+            }
+            console.log("fingerprint=" + h.digest("hex").slice(0, 16));
+          ' | tee "$GITHUB_OUTPUT"
+          if [ "$(git status --porcelain crates/xeet-core/src/tokens.rs | wc -l)" -eq 0 ] && [ "$(git status --porcelain assets/upstream.lock.json | wc -l)" -eq 0 ]; then
+            echo "equivalent=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "equivalent=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Gates
+        id: gates
+        if: steps.fingerprint.outputs.equivalent == 'false'
+        continue-on-error: true
+        env:
+          XEET_VENDOR_URL: ${{ secrets.XEET_VENDOR_URL }}
+          XEET_VENDOR_TOKEN: ${{ secrets.XEET_VENDOR_TOKEN }}
+        run: |
+          node tools/ship/fetch-vendor.mjs
+          cargo build --release --locked --bin xeet
+          XEET_BIN="$PWD/target/release/xeet" node tools/ship/parity-check.mjs
+          cargo test --locked --workspace
+
+      - name: Open a signed token-port PR
+        if: steps.fingerprint.outputs.equivalent == 'false' && steps.gates.outcome == 'success' && inputs.dry_run != true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          HEAD_OID=$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/main" --jq .object.sha)
+          BRANCH="sync/upstream-$(date -u +%Y%m%d%H%M)"
+          APP_VER=$(node -p 'String(require("./assets/upstream.lock.json").appVersion).slice(0, 8)')
+          TOKENS_B64=$(base64 < crates/xeet-core/src/tokens.rs | tr -d '\n')
+          LOCK_B64=$(base64 < assets/upstream.lock.json | tr -d '\n')
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/git/refs" \
+            -f ref="refs/heads/${BRANCH}" -f sha="$HEAD_OID"
+          RESPONSE=$(jq -n \
+            --arg repo "$GITHUB_REPOSITORY" \
+            --arg branch "$BRANCH" \
+            --arg oid "$HEAD_OID" \
+            --arg msg "tokens: follow upstream ${APP_VER}" \
+            --arg tokens "$TOKENS_B64" \
+            --arg lock "$LOCK_B64" \
+            '{
+              query: "mutation($input: CreateCommitOnBranchInput!) { createCommitOnBranch(input: $input) { commit { oid signature { isValid } } } }",
+              variables: {
+                input: {
+                  branch: { repositoryNameWithOwner: $repo, branchName: $branch },
+                  expectedHeadOid: $oid,
+                  message: { headline: $msg },
+                  fileChanges: {
+                    additions: [
+                      { path: "crates/xeet-core/src/tokens.rs", contents: $tokens },
+                      { path: "assets/upstream.lock.json", contents: $lock }
+                    ]
+                  }
+                }
+              }
+            }' | gh api graphql --input -)
+          echo "$RESPONSE" | jq -e '.data.createCommitOnBranch.commit.signature.isValid == true' >/dev/null || {
+            echo "::error::Automated commit signature verification failed: $RESPONSE"
+            exit 1
+          }
+          gh pr create --head "$BRANCH" --base main \
+            --title "Follow upstream X token changes (${APP_VER})" \
+            --body "Regenerated from the snapshot in the private store. Gates passed. Run: $RUN_URL"
+
+      - name: Open a repair brief (a rule or structure changed)
+        if: steps.fingerprint.outputs.equivalent == 'false' && steps.gates.outcome == 'failure' && inputs.dry_run != true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          cat > repair-brief.md <<EOF
+          A sync run failed its gates. This issue is the brief an agent picks up.
+
+          - **Run:** ${RUN_URL}
+          - **Upstream app version:** the one in \`assets/upstream.lock.json\`
+          - **What changed:** the token diff is in the run log
+          - **What failed:** the gate output is at the bottom of the failing step
+
+          To reproduce:
+
+          \`\`\`sh
+          node tools/ship/fetch-vendor.mjs
+          cargo build --release --locked --bin xeet
+          XEET_BIN=target/release/xeet node tools/ship/parity-check.mjs
+          cargo test --locked --workspace
+          \`\`\`
+          EOF
+          gh issue create --title "Repair brief: upstream X changed something we model" --body-file repair-brief.md

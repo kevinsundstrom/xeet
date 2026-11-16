@@ -1,0 +1,112 @@
+// Auto-mapped static media imports -> hashed immutable `/_next/static/media/*` URLs.
+import img_0 from "../_assets/avatars/MerriamWebster.png";
+import img_1 from "../_assets/avatars/NASAGoddard.jpg";
+import img_2 from "../_assets/avatars/NFL.jpg";
+import img_3 from "../_assets/avatars/adamfuhrer.jpg";
+import img_4 from "../_assets/avatars/anabology.jpg";
+import img_5 from "../_assets/avatars/bscholl.jpg";
+import img_6 from "../_assets/avatars/ciguleva.jpg";
+import img_7 from "../_assets/avatars/cursor_ai.jpg";
+import img_8 from "../_assets/avatars/espn.jpg";
+import img_9 from "../_assets/avatars/jack-badge.jpg";
+import img_10 from "../_assets/avatars/jack.jpg";
+import img_11 from "../_assets/avatars/justinbieber.jpg";
+import img_12 from "../_assets/avatars/karpathy.jpg";
+import img_13 from "../_assets/avatars/kyunbit.jpg";
+import img_14 from "../_assets/avatars/mattpocockuk.jpg";
+import img_15 from "../_assets/avatars/mihar_22.jpg";
+import img_16 from "../_assets/avatars/pizzahut.jpg";
+import img_17 from "../_assets/avatars/rauchg-badge.jpg";
+import img_18 from "../_assets/avatars/rauchg.jpg";
+import img_19 from "../_assets/avatars/restream-badge.jpg";
+import img_20 from "../_assets/avatars/zackdfilms1.jpg";
+import img_21 from "../_assets/cards/adamfuhrer-0.jpg";
+import img_22 from "../_assets/cards/adamfuhrer-1.jpg";
+import img_23 from "../_assets/cards/anabology-video.jpg";
+import img_24 from "../_assets/cards/anyways.jpg";
+import img_25 from "../_assets/cards/bieber-0.jpg";
+import img_26 from "../_assets/cards/bieber-1.jpg";
+import img_27 from "../_assets/cards/ciguleva-0.jpg";
+import img_28 from "../_assets/cards/ciguleva-1.jpg";
+import img_29 from "../_assets/cards/ciguleva-10.jpg";
+import img_30 from "../_assets/cards/ciguleva-11.jpg";
+import img_31 from "../_assets/cards/ciguleva-12.jpg";
+import img_32 from "../_assets/cards/ciguleva-13.jpg";
+import img_33 from "../_assets/cards/ciguleva-14.jpg";
+import img_34 from "../_assets/cards/ciguleva-15.jpg";
+import img_35 from "../_assets/cards/ciguleva-16.jpg";
+import img_36 from "../_assets/cards/ciguleva-17.jpg";
+import img_37 from "../_assets/cards/ciguleva-18.jpg";
+import img_38 from "../_assets/cards/ciguleva-19.jpg";
+import img_39 from "../_assets/cards/ciguleva-2.jpg";
+import img_40 from "../_assets/cards/ciguleva-3.jpg";
+import img_41 from "../_assets/cards/ciguleva-4.jpg";
+import img_42 from "../_assets/cards/ciguleva-5.jpg";
+import img_43 from "../_assets/cards/ciguleva-6.jpg";
+import img_44 from "../_assets/cards/ciguleva-7.jpg";
+import img_45 from "../_assets/cards/ciguleva-8.jpg";
+import img_46 from "../_assets/cards/ciguleva-9.jpg";
+import img_47 from "../_assets/cards/espn-video.jpg";
+import img_48 from "../_assets/cards/karpathy-hackertube.jpg";
+import img_49 from "../_assets/cards/mri-aion-quote.jpg";
+import img_50 from "../_assets/cards/mri-video-poster.jpg";
+import img_51 from "../_assets/cards/ui-sdk-poster.jpg";
+import img_52 from "../_assets/cards/whataboutism.jpg";
+import img_53 from "../_assets/cards/zackd-vertical.jpg";
+
+export const ASSET_URL_MAP = {
+  "./avatars/MerriamWebster.png": img_0.src ?? img_0,
+  "./avatars/NASAGoddard.jpg": img_1.src ?? img_1,
+  "./avatars/NFL.jpg": img_2.src ?? img_2,
+  "./avatars/adamfuhrer.jpg": img_3.src ?? img_3,
+  "./avatars/anabology.jpg": img_4.src ?? img_4,
+  "./avatars/bscholl.jpg": img_5.src ?? img_5,
+  "./avatars/ciguleva.jpg": img_6.src ?? img_6,
+  "./avatars/cursor_ai.jpg": img_7.src ?? img_7,
+  "./avatars/espn.jpg": img_8.src ?? img_8,
+  "./avatars/jack-badge.jpg": img_9.src ?? img_9,
+  "./avatars/jack.jpg": img_10.src ?? img_10,
+  "./avatars/justinbieber.jpg": img_11.src ?? img_11,
+  "./avatars/karpathy.jpg": img_12.src ?? img_12,
+  "./avatars/kyunbit.jpg": img_13.src ?? img_13,
+  "./avatars/mattpocockuk.jpg": img_14.src ?? img_14,
+  "./avatars/mihar_22.jpg": img_15.src ?? img_15,
+  "./avatars/pizzahut.jpg": img_16.src ?? img_16,
+  "./avatars/rauchg-badge.jpg": img_17.src ?? img_17,
+  "./avatars/rauchg.jpg": img_18.src ?? img_18,
+  "./avatars/restream-badge.jpg": img_19.src ?? img_19,
+  "./avatars/zackdfilms1.jpg": img_20.src ?? img_20,
+  "./cards/adamfuhrer-0.jpg": img_21.src ?? img_21,
+  "./cards/adamfuhrer-1.jpg": img_22.src ?? img_22,
+  "./cards/anabology-video.jpg": img_23.src ?? img_23,
+  "./cards/anyways.jpg": img_24.src ?? img_24,
+  "./cards/bieber-0.jpg": img_25.src ?? img_25,
+  "./cards/bieber-1.jpg": img_26.src ?? img_26,
+  "./cards/ciguleva-0.jpg": img_27.src ?? img_27,
+  "./cards/ciguleva-1.jpg": img_28.src ?? img_28,
+  "./cards/ciguleva-10.jpg": img_29.src ?? img_29,
+  "./cards/ciguleva-11.jpg": img_30.src ?? img_30,
+  "./cards/ciguleva-12.jpg": img_31.src ?? img_31,
+  "./cards/ciguleva-13.jpg": img_32.src ?? img_32,
+  "./cards/ciguleva-14.jpg": img_33.src ?? img_33,
+  "./cards/ciguleva-15.jpg": img_34.src ?? img_34,
+  "./cards/ciguleva-16.jpg": img_35.src ?? img_35,
+  "./cards/ciguleva-17.jpg": img_36.src ?? img_36,
+  "./cards/ciguleva-18.jpg": img_37.src ?? img_37,
+  "./cards/ciguleva-19.jpg": img_38.src ?? img_38,
+  "./cards/ciguleva-2.jpg": img_39.src ?? img_39,
+  "./cards/ciguleva-3.jpg": img_40.src ?? img_40,
+  "./cards/ciguleva-4.jpg": img_41.src ?? img_41,
+  "./cards/ciguleva-5.jpg": img_42.src ?? img_42,
+  "./cards/ciguleva-6.jpg": img_43.src ?? img_43,
+  "./cards/ciguleva-7.jpg": img_44.src ?? img_44,
+  "./cards/ciguleva-8.jpg": img_45.src ?? img_45,
+  "./cards/ciguleva-9.jpg": img_46.src ?? img_46,
+  "./cards/espn-video.jpg": img_47.src ?? img_47,
+  "./cards/karpathy-hackertube.jpg": img_48.src ?? img_48,
+  "./cards/mri-aion-quote.jpg": img_49.src ?? img_49,
+  "./cards/mri-video-poster.jpg": img_50.src ?? img_50,
+  "./cards/ui-sdk-poster.jpg": img_51.src ?? img_51,
+  "./cards/whataboutism.jpg": img_52.src ?? img_52,
+  "./cards/zackd-vertical.jpg": img_53.src ?? img_53,
+};

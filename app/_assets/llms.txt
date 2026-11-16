@@ -1,0 +1,42 @@
+# xeet
+
+> Renders X (Twitter) posts to PNG without a browser: X's own layout, fonts, emoji and line-breaking rules rebuilt in Rust, compiled to WebAssembly, and checked pixel for pixel against Chrome rendering X's real stylesheet. A low-level library for TypeScript/JavaScript (`@xeet/core`), Rust (`xeet-core`) and the command line (`@xeet/cli`). Licensed under Apache-2.0. There is no hosted rendering API.
+
+Rendering is a pure function from a `Post` (JSON) and `RenderOptions` (`surface`, `width`, `theme`, `dpr`, `fontScale`, `expanded`) to PNG bytes plus a typed `Report` of what was drawn. It never touches the network. Turning an `x.com` link into a `Post` (following `t.co` redirects, reading link cards, downloading images) is a separate step, `resolve`, that runs through a `fetch` the caller injects.
+
+## Docs & Source Definitions
+
+- [Full documentation](/index.md): features, JavaScript/TypeScript, Rust and CLI APIs, return shapes, edge cases, and Chrome parity tests
+- [Full documentation as one text file](/llms-full.txt): single-file Markdown bundle
+- [TypeScript definitions (`packages/xeet/src/types.d.ts`)](https://github.com/rauchg/xeet/blob/main/packages/xeet/src/types.d.ts): `Post`, `RenderOptions`, `Report`, `RenderResult`, `RgbaResult`, `BatchItem`, `Resolved`, `ResolvedLink`, `Host`, `Xeet`, `XeetError`
+- [Rust wire model (`crates/xeet-core/src/model.rs`)](https://github.com/rauchg/xeet/blob/main/crates/xeet-core/src/model.rs): `Post`, `RenderOptions`, `Report`, `Length`, `Size`, `TextReport`, `Entity`, `Hidden`, `Attachment`
+- [Rust render pipeline (`crates/xeet-core/src/render.rs`)](https://github.com/rauchg/xeet/blob/main/crates/xeet-core/src/render.rs): `render`, `render_rgba`, `render_many`, `explain`, `has_show_more`, `display_list`, `sheet`, `Error`
+- [Rust resolver (`crates/xeet-resolve/src/lib.rs`)](https://github.com/rauchg/xeet/blob/main/crates/xeet-resolve/src/lib.rs): `resolve`, `resolve_link`, `Resolved`, `ResolvedLink`, `MediaAsset`, `Source`
+
+## API & Return Shapes
+
+- `loadXeet(options?)` → `Promise<Xeet>` / `loadXeetSync(options?)` → `Xeet` (`@xeet/core/node`)
+- `bind(wasm)` → `Xeet` (`@xeet/core`, browser/worker)
+- `xeet.render(post, options?)` → `{ png: Uint8Array, report: Report }` (PNG pixel dimensions: `Math.ceil(report.size.width * dpr)` × `Math.ceil(report.size.height * dpr)`)
+- `xeet.renderPng(post, options?)` → `Uint8Array`
+- `xeet.renderRgba(post, options?)` → `{ width: number, height: number, rgba: Uint8Array, report: Report }` (straight-alpha RGBA8, `width * height * 4` bytes)
+- `xeet.renderMany(post, optionsList)` → `{ png: Uint8Array, report: Report, paint: number }[]` (`paint` in ms)
+- `xeet.explain(post, options?)` → `Report`:
+  - `ruleset: string`, `verifiedFor: Surface[]`
+  - `size: { width: number, height: number }` (CSS px — read `report.size.width` / `report.size.height`)
+  - `length: { weighted: number, limit: number, valid: boolean }`
+  - `text: { lines: number, truncated: boolean, hasShowMore: boolean, showMore: "inline" | "clamped" | null, visible: string }`
+  - `entities: { kind: "url" | "mention" | "hashtag" | "cashtag", range: [number, number], text: string, display?: string }[]` (UTF-16 offsets)
+  - `hidden: { range: [number, number], why: string }[]`
+  - `attachment: { shown: "card" | "media" | "quote" | "poll", url?: string | null, why: string } | null`
+  - `warnings: string[]`
+- `xeet.hasShowMore(post, options?)` → `boolean` (pass `{ expanded: true }` to `render()` to expand `"Show more"`)
+- `xeet.sheet({ post, widths?, themes?, dpr? })` → `Uint8Array` (single labeled PNG)
+- `xeet.resolve(input, options?, host?)` → `Promise<Resolved>`: `{ post: Post, links: Record<string, ResolvedLink>, media: Record<string, MediaAsset>, source: { url, id, appVersion, pinned }, warnings: string[] }`
+- `xeet.resolveLinks(url, options?, host?)` → `Promise<ResolvedLink>`: `{ meta: LinkMeta, chain: { url, status }[], finalUrl: string, tags: Record<string, string>, imageUrl: string | null, image?: MediaAsset, notes: string[], cached: boolean }`
+- Errors throw `XeetError` (`{ code: string, status: 400 | 413 | 500 | 503, fields: { path, message, suggestion? }[], notes: string[] }`) or `ResolveError` (`{ code, status, fields }`)
+- Rust: `xeet_core::render::render(&post, &options)` → `Result<(Vec<u8>, Report), Error>`; CLI (`npm i -g @xeet/cli`): `xeet render post.json -o post.png`, `xeet explain post.json` (stdout `Report` JSON), `xeet resolve <url> --media` (stdout `Resolved` JSON); exit codes `0 | 2 | 3 | 4 | 5`
+
+## Optional
+
+- [Live demo](https://xeet-rs.vercel.app): hard posts rendered in the browser, four layouts each, with the exact `render()` input behind them under "view code"

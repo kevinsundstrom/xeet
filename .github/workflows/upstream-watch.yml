@@ -1,0 +1,91 @@
+# Periodic upstream X drift alarm.
+#
+# Runs every 6 hours (and on manual dispatch) with zero private vendor secrets.
+# Never runs on pull requests. All actions are SHA-pinned first-party `actions/*`
+# with `persist-credentials: false` and job-scoped least privilege.
+name: upstream-watch
+
+on:
+  schedule:
+    - cron: "17 */6 * * *" # every 6 hours, off the hour
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: upstream-watch
+  cancel-in-progress: false
+
+jobs:
+  canary:
+    name: Probe live x.com invariants
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write # Open or comment on deduplicated upstream drift alarm issues
+      actions: write # Dispatch sync.yml when upstream lockfile hash rotates
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+          package-manager-cache: false
+
+      - name: Probe live x.com stylesheet and SSR layout invariants
+        id: canary
+        run: |
+          set +e
+          node tools/ship/upstream-canary.mjs --report canary-report.md
+          code=$?
+          echo "exit=$code" >> "$GITHUB_OUTPUT"
+          if [ -f canary-report.md ]; then
+            cat canary-report.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+          exit 0
+
+      - name: Check if upstream lockfile hash rotated
+        id: lock
+        run: |
+          set +e
+          node tools/sync-upstream.mjs --check
+          code=$?
+          echo "exit=$code" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Trigger vendor sync when configured and lockfile rotated
+        if: steps.lock.outputs.exit == '3'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VENDOR_URL: ${{ secrets.XEET_VENDOR_URL }}
+        run: |
+          if [ -n "$VENDOR_URL" ]; then
+            gh workflow run sync.yml --ref "$GITHUB_REF_NAME"
+          fi
+
+      - name: Alarm via GitHub Issue when X changed layout or payload rules
+        if: steps.canary.outputs.exit != '0'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          TITLE="Upstream X alarm: layout or payload contract changed"
+          EXISTING=$(gh issue list --state open --search "\"$TITLE\" in:title" --json number --jq '.[0].number // empty')
+          {
+            if [ -f canary-report.md ]; then
+              cat canary-report.md
+            else
+              echo "upstream-canary exited non-zero without writing canary-report.md."
+            fi
+            echo ""
+            echo "Workflow run: $RUN_URL"
+          } > issue-body.md
+          if [ -n "$EXISTING" ]; then
+            gh issue comment "$EXISTING" --body-file issue-body.md
+          else
+            gh issue create --title "$TITLE" --body-file issue-body.md
+          fi
+          exit 1

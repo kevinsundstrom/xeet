@@ -1,0 +1,9 @@
+* @rauchg
+/.github/ @rauchg
+/Cargo.toml @rauchg
+/Cargo.lock @rauchg
+/package.json @rauchg
+/packages/ @rauchg
+/tools/ship/ @rauchg
+/vercel.json @rauchg
+/turbo.json @rauchg
