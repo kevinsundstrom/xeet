@@ -1445,3 +1445,22 @@ fn direct_twimg_urls_are_attached_without_fetching_the_video() {
         "the poster is inlined"
     );
 }
+
+#[test]
+fn a_zero_link_limit_fetches_nothing() {
+    // `--offline` and `--no-links` set the limit to zero: nothing is selected, so
+    // nothing reaches the network. The check used to run after the first URL was
+    // already in, so one link per post still went out.
+    let host = Recorder::default();
+    let opts = Options {
+        max_links: 0,
+        ..Options::default()
+    };
+    let resolved = block_on(run("read https://vercel.com/a today", opts, &host)).unwrap();
+    assert!(
+        host.requested_urls().is_empty(),
+        "fetched: {:?}",
+        host.requested_urls()
+    );
+    assert!(resolved.post.links.is_empty());
+}

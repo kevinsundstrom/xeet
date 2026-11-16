@@ -1382,6 +1382,12 @@ where
     // up; `expanded` is the same URL with a scheme, which is what a fetch needs
     // (a pasted `example.com/a` has no scheme in the text).
     let mut urls: Vec<(String, String)> = Vec::new();
+    // `--offline` and `--no-links` set the limit to zero: nothing is selected,
+    // so nothing reaches the network. The check below runs after a URL is
+    // already in, so on its own it let one link per post through.
+    if ctx.opts.max_links == 0 {
+        return;
+    }
     for entity in xeet_text::parse(&text).entities {
         if let xeet_text::EntityKind::Url { expanded, .. } = &entity.kind {
             if from_page && !resolved.post.links.contains_key(&entity.text) {
