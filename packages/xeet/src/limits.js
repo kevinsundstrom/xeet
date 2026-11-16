@@ -27,6 +27,8 @@ export const LIMITS = {
   output_pixels: 64000000,
   width_min: 100,
   width_max: 1200,
+  label_chars: 280,
+  entity_labels: 10000,
   body_bytes: MAX_BODY_BYTES,
 };
 
@@ -44,6 +46,7 @@ export function limitsPolicy() {
     output: { pixels: LIMITS.output_pixels, width: LIMITS.output_width, height: LIMITS.output_height },
     sheet: { cells: LIMITS.sheet_cells },
     width: { min: LIMITS.width_min, max: LIMITS.width_max },
+    labels: { chars: LIMITS.label_chars, count: LIMITS.entity_labels },
     request_bytes: LIMITS.body_bytes,
     on_exceed: "the request is refused with a 4xx and an error code; it is never truncated or partially rendered",
   };

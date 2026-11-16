@@ -63,6 +63,10 @@ pub struct Limits {
     pub max_output_pixels: u64,
     /// Longest accepted card title, description and alt text.
     pub max_card_text_chars: usize,
+    /// Longest accepted entity label (`entityLabels`) and link display form.
+    pub max_label_chars: usize,
+    /// Most `entityLabels` entries; a bound no real payload approaches.
+    pub max_entity_labels: usize,
     /// Narrowest and widest viewport we accept, in CSS pixels.
     pub min_width: f32,
     pub max_width: f32,
@@ -105,6 +109,8 @@ impl Limits {
             max_output_height: 32_768,
             max_output_pixels: 64_000_000,
             max_card_text_chars: 4096,
+            max_label_chars: 280,
+            max_entity_labels: 10_000,
             min_width: 100.0,
             max_width: 1200.0,
             work_base: 2_000_000,
@@ -134,6 +140,8 @@ impl Limits {
             max_output_height: u32::MAX,
             max_output_pixels: u64::MAX,
             max_card_text_chars: usize::MAX,
+            max_label_chars: usize::MAX,
+            max_entity_labels: usize::MAX,
             min_width: 1.0,
             max_width: f32::MAX,
             work_base: u64::MAX / 4,
@@ -380,6 +388,13 @@ impl fmt::Display for LimitError {
 
 impl std::error::Error for LimitError {}
 
+/// A handle is at most 15 characters, a hashtag a few dozen, a display URL is
+/// its host plus the first 15 characters of the rest and an ellipsis; 280
+/// leaves room for any of them and nothing else. The rules layer holds this
+/// line on its own for an unvalidated caller; `Limits::standard()` writes the
+/// same number as `max_label_chars`.
+pub const MAX_LABEL_CHARS: usize = 280;
+
 /// One validation complaint about the input, with the field it is about.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Problem {
@@ -603,15 +618,54 @@ fn validate_post_body(
         }
     }
 
+    // Entity labels and display forms replace a token with a server-canonical
+    // spelling; a label is a handle, a hashtag or a shortened URL, never a
+    // paragraph. Unbounded, one 1 MiB label on 30,000 mentions asked for tens
+    // of gigabytes before anything truncated.
+    if post.entity_labels.len() > limits.max_entity_labels {
+        problems.push(Problem::new(
+            format!("{path}.entityLabels"),
+            format!(
+                "has {} entries; the limit is {}",
+                post.entity_labels.len(),
+                limits.max_entity_labels
+            ),
+        ));
+    }
+    for (written, label) in &post.entity_labels {
+        let n = label.chars().count().max(written.chars().count());
+        if n > limits.max_label_chars {
+            problems.push(Problem::new(
+                format!("{path}.entityLabels[{written:?}]"),
+                format!("is {n} characters; the limit is {}", limits.max_label_chars),
+            ));
+        }
+    }
+
     for (url, meta) in &post.links {
         let at = format!("{path}.links[{url:?}]");
+        if let Some(d) = &meta.display {
+            if d.chars().count() > limits.max_label_chars {
+                problems.push(Problem::new(
+                    format!("{at}.display"),
+                    format!(
+                        "is {} characters; the limit is {}",
+                        d.chars().count(),
+                        limits.max_label_chars
+                    ),
+                ));
+            }
+        }
         if url.is_empty() {
             problems.push(Problem::new(
                 format!("{path}.links"),
                 "contains an empty URL key",
             ));
         }
+        // `card` included: card selection copies it per link entity, so an
+        // unbounded card type multiplied like the labels did.
         for (field, value) in [
+            ("card", &meta.card),
             ("title", &meta.title),
             ("description", &meta.description),
             ("domain", &meta.domain),

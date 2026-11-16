@@ -665,10 +665,13 @@ fn char_entities(entities: &[textport::Entity], utf16_at: &[usize], post: &Post)
 /// label when the input carries one (`@Bot` → `@bot`), otherwise the token as
 /// written.
 fn entity_label(post: &Post, written: &str) -> String {
-    post.entity_labels
-        .get(written)
-        .cloned()
-        .unwrap_or_else(|| written.to_string())
+    // Validation bounds labels; an unvalidated caller still cannot turn one
+    // oversized label into gigabytes across repeated tokens. `nth` stops at
+    // the bound instead of counting the whole label once per token.
+    match post.entity_labels.get(written) {
+        Some(label) if label.chars().nth(crate::limits::MAX_LABEL_CHARS).is_none() => label.clone(),
+        _ => written.to_string(),
+    }
 }
 
 fn url_display(post: &Post, written: &str, computed: &str) -> String {
