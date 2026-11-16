@@ -323,11 +323,16 @@ if (ONLY === "wasm" || (!ONLY && (!SKIP_TESTS || wasmMissing))) {
 
 if (runs("pkg-test")) {
   step("WASM package tests", () => {
-    execFileSync("node", ["--test", "packages/xeet/test/xeet.test.js", "packages/xeet/test/fonts.test.js"], {
-      cwd: ROOT,
-      stdio: "inherit",
-      env: { ...env, XEET_REQUIRE_WASM: "1" },
-    });
+    execFileSync(
+      "node",
+      [
+        "--test",
+        "packages/xeet/test/xeet.test.js",
+        "packages/xeet/test/fonts.test.js",
+        "packages/xeet/test/resolve-host.test.js",
+      ],
+      { cwd: ROOT, stdio: "inherit", env: { ...env, XEET_REQUIRE_WASM: "1" } },
+    );
   });
 }
 

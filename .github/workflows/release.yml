@@ -244,7 +244,7 @@ jobs:
         run: |
           cargo test --locked -p xeet-wasm
           node tools/ship/build-wasm.mjs
-          XEET_REQUIRE_WASM=1 node --test packages/xeet/test/xeet.test.js packages/xeet/test/fonts.test.js
+          XEET_REQUIRE_WASM=1 node --test packages/xeet/test/xeet.test.js packages/xeet/test/fonts.test.js packages/xeet/test/resolve-host.test.js
 
           mkdir -p stage/core-pkg stage/wasm-out
           node --input-type=module <<'NODE'

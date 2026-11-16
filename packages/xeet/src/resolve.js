@@ -58,9 +58,41 @@ export function whatwgHost(parts = {}) {
           blocked: "opaque_redirect",
         });
       }
-      const buffer = await response.arrayBuffer();
-      const maxBytes = request.maxBytes ?? buffer.byteLength;
-      const truncated = buffer.byteLength > maxBytes;
+      // Read up to the cap and stop, never the whole response: an oversized
+      // upstream body used to be buffered in full before the limit applied.
+      // The first `maxBytes` are still delivered, truncated: the library reads
+      // a cut page's head for its card tags.
+      const maxBytes = request.maxBytes ?? Infinity;
+      let truncated = false;
+      const chunks = [];
+      let total = 0;
+      if (response.body) {
+        const reader = response.body.getReader();
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          if (total + value.byteLength > maxBytes) {
+            chunks.push(value.subarray(0, Math.max(0, maxBytes - total)));
+            total = maxBytes;
+            truncated = true;
+            await reader.cancel().catch(() => {});
+            break;
+          }
+          chunks.push(value);
+          total += value.byteLength;
+        }
+      } else {
+        const whole = new Uint8Array(await response.arrayBuffer());
+        truncated = whole.byteLength > maxBytes;
+        chunks.push(whole.subarray(0, Math.min(whole.byteLength, maxBytes)));
+        total = chunks[0].byteLength;
+      }
+      const body = new Uint8Array(total);
+      let at = 0;
+      for (const chunk of chunks) {
+        body.set(chunk, at);
+        at += chunk.byteLength;
+      }
       const headers = {};
       response.headers.forEach((value, name) => {
         headers[name.toLowerCase()] = value;
@@ -68,7 +100,7 @@ export function whatwgHost(parts = {}) {
       return {
         status: response.status,
         headers,
-        body: truncated ? new Uint8Array(buffer, 0, maxBytes) : new Uint8Array(buffer),
+        body,
         truncated,
       };
     },
