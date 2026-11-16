@@ -249,50 +249,68 @@ const domProbes = [
   },
   {
     name: "SSR timeline 7-slot carousel indicator window (justinbieber / ciguleva)",
-    url: "https://x.com/justinbieber",
-    async check(html) {
-      let sample = html;
-      if (!sample.includes("2120954896363200630")) {
-        const alt = await fetchText("https://x.com/ciguleva");
-        if (alt.includes("2121073443533881486")) sample = alt;
-        else {
-          // Both posts aged off page 1 of their timelines: verify the 7-slot
-          // indicator constants directly in the live `x-web` client bundle so
-          // this probe never degrades into a silent skip.
-          const entry = sample.match(/https:\/\/abs\.twimg\.com\/x-web\/x-web\/entry-client-logged-out-[A-Za-z0-9_-]+\.js/)?.[0];
-          if (!entry) return "missing entry-client-logged-out bundle URL on profile HTML";
-          const base = "https://abs.twimg.com/x-web/x-web/assets/";
-          const seen = new Set();
-          const queue = [entry];
-          while (queue.length && seen.size < 80) {
-            const url = queue.shift();
-            if (seen.has(url)) continue;
-            seen.add(url);
-            const js = await fetchText(url);
-            if (js.includes("round 9999px") && js.includes("withPageIndicator")) {
-              if (!/=12,/.test(js) || !/=22,/.test(js) || !/=5,/.test(js) || !/=\.35,/.test(js) || !/=7[},;]/.test(js)) {
-                return "carousel indicator constants (12/22/5/0.35/7) drifted in x-web bundle";
-              }
-              return null;
-            }
-            for (const m of js.matchAll(/["'`](?:\.\/)?(?:assets\/)?([A-Za-z0-9_-]{6,}\.js)["'`]/g)) {
-              const next = base + m[1];
-              if (!seen.has(next)) queue.push(next);
-            }
+    async check() {
+      let sample = null;
+      for (const [profileUrl, postId] of [
+        ["https://x.com/justinbieber", "2120954896363200630"],
+        ["https://x.com/ciguleva", "2121073443533881486"],
+      ]) {
+        try {
+          const html = await fetchText(profileUrl);
+          if (html.includes(postId)) {
+            sample = html;
+            break;
           }
-          return "could not locate 7-slot carousel indicator module in live x-web bundle";
+          sample ??= html;
+        } catch {
+          // X's WAF returns HTTP 403 on logged-out profile root URLs from
+          // datacenter IPs (e.g. GitHub Actions Azure runners) while allowing
+          // `/status/<id>` permalinks and `abs.twimg.com` bundles.
         }
       }
-      if (!sample.includes("width:120.5px")) {
-        return "expected 7-slot windowed indicator container width:120.5px on 20-item timeline carousel";
+
+      if (sample && (sample.includes("2120954896363200630") || sample.includes("2121073443533881486"))) {
+        if (!sample.includes("width:120.5px")) {
+          return "expected 7-slot windowed indicator container width:120.5px on 20-item timeline carousel";
+        }
+        if (!sample.includes("inset(0px 16px 0px 0px round 9999px)")) {
+          return "expected half-scaled 6px 7th indicator slot (inset 16px of 22px) on 20-item timeline carousel";
+        }
+        if (!sample.includes("inset(0px 22px 0px 0px round 9999px)")) {
+          return "expected collapsed 0px slots 8..20 (inset 22px of 22px) on 20-item timeline carousel";
+        }
+        return null;
       }
-      if (!sample.includes("inset(0px 16px 0px 0px round 9999px)")) {
-        return "expected half-scaled 6px 7th indicator slot (inset 16px of 22px) on 20-item timeline carousel";
+
+      // Either profile HTML returned HTTP 403 on a datacenter runner or both
+      // posts aged off page 1: verify the 7-slot indicator constants directly
+      // in the live `x-web` client bundle linked from `/status/` SSR HTML.
+      const seedHtml = sample ?? probeHtml ?? "";
+      const entry = seedHtml.match(/https:\/\/abs\.twimg\.com\/x-web\/x-web\/entry-client-logged-out-[A-Za-z0-9_-]+\.js/)?.[0];
+      if (!entry) return "missing entry-client-logged-out bundle URL on SSR HTML";
+      const base = "https://abs.twimg.com/x-web/x-web/assets/";
+      const seen = new Set([entry]);
+      let frontier = [entry];
+      while (frontier.length && seen.size <= 100) {
+        const batch = frontier.splice(0, 8);
+        const texts = await Promise.all(batch.map((u) => fetchText(u)));
+        for (const js of texts) {
+          if (js.includes("round 9999px") && js.includes("withPageIndicator")) {
+            if (!/=12,/.test(js) || !/=22,/.test(js) || !/=5,/.test(js) || !/=\.35,/.test(js) || !/=7[},;]/.test(js)) {
+              return "carousel indicator constants (12/22/5/0.35/7) drifted in x-web bundle";
+            }
+            return null;
+          }
+          for (const m of js.matchAll(/["'`](?:\.\/)?(?:assets\/)?([A-Za-z0-9_-]{6,}\.js)["'`]/g)) {
+            const next = base + m[1];
+            if (!seen.has(next) && seen.size <= 100) {
+              seen.add(next);
+              frontier.push(next);
+            }
+          }
+        }
       }
-      if (!sample.includes("inset(0px 22px 0px 0px round 9999px)")) {
-        return "expected collapsed 0px slots 8..20 (inset 22px of 22px) on 20-item timeline carousel";
-      }
-      return null;
+      return "could not locate 7-slot carousel indicator module in live x-web bundle";
     },
   },
   {
@@ -376,7 +394,7 @@ const domProbes = [
 
 for (const probe of domProbes) {
   try {
-    const html = await fetchText(probe.url);
+    const html = probe.url ? await fetchText(probe.url) : null;
     const problem = await probe.check(html);
     record(!problem, probe.name, problem ?? "");
   } catch (e) {
