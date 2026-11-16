@@ -88,6 +88,16 @@ pub(crate) fn extract(t: &Text, without_protocol: bool) -> Vec<RawUrl> {
         };
         let Some(m) = matched else {
             i += 1;
+            // After a tried non-ASCII label character finds no URL, every later
+            // start in the same run fails the same way (same label chain, same
+            // TLD), and trying each made a long label quadratic: skip the run.
+            // A start the guard refused was never tried, and a non-label start is
+            // not part of the run, so `@üü.com` and `中文　ü.co.uk` still match.
+            if preceding_ok && !first.is_ascii() && is_label_char(first) {
+                while i < t.len() && !t.ch(i).is_ascii() && is_label_char(t.ch(i)) {
+                    i += 1;
+                }
+            }
             continue;
         };
         // `lastIndex` is the end of the match whether or not it is accepted, and
