@@ -236,3 +236,39 @@ fn xeet_font_dir_allows_file_override_and_rejects_bad_dir() {
     );
     assert_eq!(&ok.stdout[..8], b"\x89PNG\r\n\x1a\n");
 }
+
+#[test]
+fn resolve_stamps_wall_clock_now_and_honors_explicit_now_flag() {
+    let wall = run(&["resolve", "hello world", "--offline", "--compact"]);
+    assert_eq!(
+        wall.status.code(),
+        Some(0),
+        "resolve failed: {}",
+        stderr(&wall)
+    );
+    let parsed: serde_json::Value = serde_json::from_slice(&wall.stdout).unwrap();
+    let stamped = parsed["post"]["now"]
+        .as_str()
+        .expect("xeet resolve must populate post.now");
+    assert!(
+        stamped.ends_with('Z') && stamped.contains('T'),
+        "expected ISO-8601 UTC timestamp, got {stamped}"
+    );
+
+    // Pipe resolved post with createdAt directly into `xeet render -` and verify
+    // `--now` stays authoritative.
+    let fixed = run(&[
+        "resolve",
+        r#"{"text":"just setting up my twttr","createdAt":"2006-03-21T20:50:14.000Z","author":{"name":"jack","handle":"jack"}}"#,
+        "--offline",
+        "--now",
+        "2026-11-17T12:00:00.000Z",
+        "--compact",
+    ]);
+    assert_eq!(fixed.status.code(), Some(0), "stderr: {}", stderr(&fixed));
+    let fixed_json: serde_json::Value = serde_json::from_slice(&fixed.stdout).unwrap();
+    assert_eq!(
+        fixed_json["post"]["now"].as_str(),
+        Some("2026-11-17T12:00:00.000Z")
+    );
+}

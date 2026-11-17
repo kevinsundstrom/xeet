@@ -26,11 +26,13 @@ const KNOWN: &[&str] = &[
     "surface",
     "max-links",
     "no-links",
+    "now",
     "cache",
     "refresh",
     "offline",
     "compact",
     "quiet",
+    "time",
     "help",
     "h",
     "limits",
@@ -95,6 +97,9 @@ pub fn run(argv: &[String]) -> u8 {
     }
     if let Some(timeout) = args.value("timeout") {
         opts.timeout_ms = timeout.parse().unwrap_or(opts.timeout_ms);
+    }
+    if let Some(now) = args.value("now") {
+        opts.now = Some(now.to_string());
     }
     let host = xeet_resolve_net::Host::new();
     opts.now_ms = {

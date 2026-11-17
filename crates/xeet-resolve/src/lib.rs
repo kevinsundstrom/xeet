@@ -480,7 +480,7 @@ where
     }
     let post = Post {
         text: input.to_string(),
-        now: ctx.opts.now.clone(),
+        now: ctx.now_iso(),
         ..Post::default()
     };
     let mut resolved = Resolved {
@@ -531,6 +531,17 @@ where
         }
     }
 
+    /// Reference ISO-8601 timestamp for `Post::now`: explicit `Options::now`
+    /// wins, then a non-zero [`Clock`] / `Options::now_ms` instant formatted as
+    /// UTC (`YYYY-MM-DDTHH:MM:SS.sssZ`). Returns `None` when neither is given.
+    fn now_iso(&self) -> Option<String> {
+        if let Some(now) = &self.opts.now {
+            return Some(now.clone());
+        }
+        let ms = self.now_ms();
+        (ms > 0).then(|| format_iso_utc(ms))
+    }
+
     fn allow_private(&self, url: &Url) -> bool {
         self.opts.allow_hosts.iter().any(|host| {
             host.eq_ignore_ascii_case(&url.host)
@@ -564,8 +575,11 @@ where
     // `post_from_value` is the renderer's own strict parser: a typo comes back
     // with the path it is about (`auther` → `did you mean author`), which the
     // editor underlines.
-    let post = xeet_core::limits::post_from_value(post_value)
+    let mut post = xeet_core::limits::post_from_value(post_value)
         .map_err(|error| Error::Invalid(vec![(error.what.to_string(), error.message.clone())]))?;
+    if post.now.is_none() {
+        post.now = ctx.now_iso();
+    }
     // The renderer's own validation, so a caller learns about every problem at
     // once (and a resolved post is always renderable).
     if let Err(problems) = xeet_core::limits::validate(&post, &opts, &ctx.opts.limits) {
@@ -670,12 +684,8 @@ where
         });
     };
     let app_version = post::app_version(&html);
-    let post = post::payload_to_post_with(
-        &tweet,
-        ctx.opts.now.as_deref(),
-        app_version.as_deref(),
-        budget,
-    );
+    let now = ctx.now_iso();
+    let post = post::payload_to_post_with(&tweet, now.as_deref(), app_version.as_deref(), budget);
     let pinned = post::pinned_ids(&html).iter().any(|pinned| pinned == id);
     Ok(PagePost {
         tweet,
@@ -2017,6 +2027,31 @@ where
             },
         )
         .await;
+}
+
+/// Formats epoch milliseconds as `YYYY-MM-DDTHH:MM:SS.sssZ` (proleptic Gregorian UTC).
+pub fn format_iso_utc(ms: u64) -> String {
+    let total_secs = ms / 1000;
+    let millis = ms % 1000;
+    let days = (total_secs / 86_400) as i64;
+    let rem = total_secs % 86_400;
+    let hour = rem / 3600;
+    let minute = (rem % 3600) / 60;
+    let second = rem % 60;
+
+    // Howard Hinnant's `civil_from_days`.
+    let z = days + 719_468;
+    let era = z.div_euclid(146_097);
+    let doe = z - era * 146_097;
+    let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
+    let y = yoe + era * 400;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let day = doy - (153 * mp + 2) / 5 + 1;
+    let month = if mp < 10 { mp + 3 } else { mp - 9 };
+    let year = if month <= 2 { y + 1 } else { y };
+
+    format!("{year:04}-{month:02}-{day:02}T{hour:02}:{minute:02}:{second:02}.{millis:03}Z")
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

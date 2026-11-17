@@ -1464,3 +1464,82 @@ fn a_zero_link_limit_fetches_nothing() {
     );
     assert!(resolved.post.links.is_empty());
 }
+
+#[test]
+fn clock_stamps_post_now_and_nested_quotes_while_explicit_now_wins() {
+    assert_eq!(
+        crate::format_iso_utc(1_142_974_214_000),
+        "2006-03-21T20:50:14.000Z"
+    );
+    assert_eq!(
+        crate::format_iso_utc(1_709_251_199_999),
+        "2024-02-29T23:59:59.999Z"
+    );
+
+    let host = Recorder::new()
+        .robots("https://x.com", "")
+        .html(NESTED_ROOT_URL, &nested_root_page());
+    let clock = FixedClock(1_794_873_600_456);
+
+    // Default options + Clock → stamps post.now and nested quotes in UTC.
+    let resolved = block_on(resolve(
+        NESTED_ROOT_URL,
+        Options {
+            media: false,
+            max_links: 0,
+            ..Options::default()
+        },
+        &host,
+        Some(&PublicLookup),
+        None::<&MemoryCache>,
+        Some(&clock),
+    ))
+    .unwrap();
+    assert_eq!(
+        resolved.post.now.as_deref(),
+        Some("2026-11-17T00:00:00.456Z")
+    );
+    let q1 = resolved.post.quote.as_ref().expect("outer quote");
+    assert_eq!(q1.now.as_deref(), Some("2026-11-17T00:00:00.456Z"));
+    let q2 = q1.quote.as_ref().expect("inner quote");
+    assert_eq!(q2.now.as_deref(), Some("2026-11-17T00:00:00.456Z"));
+
+    // Explicit `Options::now` overrides `Clock`.
+    let explicit = block_on(resolve(
+        NESTED_ROOT_URL,
+        Options {
+            media: false,
+            max_links: 0,
+            now: Some("2025-01-02T03:04:05.000Z".to_string()),
+            ..Options::default()
+        },
+        &host,
+        Some(&PublicLookup),
+        None::<&MemoryCache>,
+        Some(&clock),
+    ))
+    .unwrap();
+    assert_eq!(
+        explicit.post.now.as_deref(),
+        Some("2025-01-02T03:04:05.000Z")
+    );
+
+    // JSON input that already carries `"now"` stays authoritative.
+    let preset = block_on(resolve(
+        r#"{"text":"hello","createdAt":"2006-03-21T20:50:14.000Z","now":"2020-05-06T00:00:00.000Z"}"#,
+        Options {
+            max_links: 0,
+            ..Options::default()
+        },
+        &host,
+        Some(&PublicLookup),
+        None::<&MemoryCache>,
+        Some(&clock),
+    ))
+    .unwrap();
+    assert_eq!(preset.post.now.as_deref(), Some("2020-05-06T00:00:00.000Z"));
+
+    // No clock and `now_ms == 0` leaves `post.now` unset for pure unit callers.
+    let unclocked = block_on(run("plain draft", Options::default(), &host)).unwrap();
+    assert_eq!(unclocked.post.now, None);
+}

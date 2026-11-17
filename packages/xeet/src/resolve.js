@@ -142,18 +142,20 @@ export function memoryCache() {
 }
 
 /** `{media, width, dpr, …}` → the JSON the wasm export takes. */
-function wireOptions(options = {}) {
+function wireOptions(options = {}, host) {
   const media = options.media ?? RESOLVE_DEFAULTS.media;
   const maxLinks =
     options.links === false ? 0 : (options.maxLinks ?? (options.max_links ?? RESOLVE_DEFAULTS.maxLinks));
+  const hostNowMs = typeof host?.now === "function" ? Number(host.now()) : NaN;
+  const nowMs = Number.isFinite(hostNowMs) && hostNowMs > 0 ? hostNowMs : Date.now();
   return JSON.stringify({
     media: media !== false,
     width: options.width ?? RESOLVE_DEFAULTS.width,
     dpr: options.dpr ?? RESOLVE_DEFAULTS.dpr,
     surface: options.surface ?? RESOLVE_DEFAULTS.surface,
     maxLinks,
-    now: options.now ?? new Date().toISOString(),
-    nowMs: Date.now(),
+    now: options.now ?? new Date(nowMs).toISOString(),
+    nowMs,
     refresh: options.refresh === true,
     // Test seam, the same one the JS resolver has (`XEET_LINKS_ALLOW_PRIVATE`):
     // the offline fixture server listens on 127.0.0.1, which the library refuses
@@ -201,7 +203,7 @@ export function bindResolve(wasm) {
     async resolve(input, options = {}, host = whatwgHost()) {
       let json;
       try {
-        json = await wasm.resolve(String(input), wireOptions(options), host);
+        json = await wasm.resolve(String(input), wireOptions(options, host), host);
       } catch (rejection) {
         throw toError(rejection);
       }
@@ -217,7 +219,7 @@ export function bindResolve(wasm) {
     async resolveLinks(url, options = {}, host = whatwgHost()) {
       let json;
       try {
-        json = await wasm.resolve_links(String(url), wireOptions(options), host);
+        json = await wasm.resolve_links(String(url), wireOptions(options, host), host);
       } catch (rejection) {
         throw toError(rejection);
       }

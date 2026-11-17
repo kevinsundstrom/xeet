@@ -231,6 +231,7 @@ resolve:
   --width N --dpr N                   the cell the variants are chosen for (600, 2)
   --max-links N                       how many of the post's URLs to resolve (4)
   --no-links                          skip the network entirely
+  --now ISO                           reference UTC timestamp (default: wall clock)
   --cache DIR                         keep resolved links in DIR (none by default)
   --compact                           one-line JSON (default: pretty)
   --quiet                             no warnings on stderr
