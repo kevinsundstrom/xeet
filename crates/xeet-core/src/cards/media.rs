@@ -547,6 +547,7 @@ pub(crate) fn layout_quote(cx: &Ctx, items: &[MediaItem], y0: f32, out: &mut Vec
                 shape: square,
                 image: item.image(),
                 focus: super::FOCUS,
+                service: false,
             });
             overlays(cx, item, rect, 0.0, out);
             rect.h
@@ -590,6 +591,7 @@ fn single(cx: &Ctx, item: &MediaItem, y0: f32, out: &mut Vec<Item>) -> f32 {
         shape: s,
         image: item.image(),
         focus: super::FOCUS,
+        service: false,
     });
     out.push(Item::PopClip);
     outline(out, s, cx.p.border);
@@ -763,6 +765,7 @@ pub(crate) fn clipped_image(out: &mut Vec<Item>, rect: Rect, image: ImageRef, ra
         shape: s,
         image,
         focus: super::FOCUS,
+        service: false,
     });
     out.push(Item::PopClip);
 }
@@ -918,6 +921,7 @@ pub(crate) fn compact_thumb(cx: &Ctx, item: &MediaItem, rect: Rect, out: &mut Ve
         shape: s,
         image: item.image(),
         focus: super::FOCUS,
+        service: false,
     });
     if let MediaItem::Video { seconds, .. } = item {
         let h = 20.0;
@@ -1131,6 +1135,7 @@ impl Attr {
             shape: rounded(Rect::new(x, icon_top, AVATAR, AVATAR), radius),
             image: ImageRef::MediaSourceAvatar(src.index),
             focus: super::FOCUS,
+            service: false,
         });
         let name_x = x + AVATAR + GAP_1;
         push_text(out, &self.name, name_x, top, self.name_w);
